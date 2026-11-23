@@ -1,0 +1,324 @@
+{
+ "fonts": [
+  {
+   "id": "dejavu-sans",
+   "family": "DejaVu Sans",
+   "regular": "DejaVuSans-Regular.ttf",
+   "bold": "DejaVuSans-Bold.ttf",
+   "variable": false,
+   "format": "truetype"
+  },
+  {
+   "id": "dejavu-condensed",
+   "family": "DejaVu Sans Condensed",
+   "regular": "DejaVuSansCondensed-Regular.ttf",
+   "bold": "DejaVuSansCondensed-Bold.ttf",
+   "variable": false,
+   "format": "truetype"
+  },
+  {
+   "id": "liberation-sans",
+   "family": "Liberation Sans",
+   "regular": "LiberationSans-Regular.ttf",
+   "bold": "LiberationSans-Bold.ttf",
+   "variable": false,
+   "format": "truetype"
+  },
+  {
+   "id": "noto-sans",
+   "family": "Noto Sans",
+   "regular": "NotoSans-Regular.ttf",
+   "bold": "NotoSans-Bold.ttf",
+   "variable": false,
+   "format": "truetype"
+  },
+  {
+   "id": "fira-sans",
+   "family": "Fira Sans",
+   "regular": "FiraSans-Regular.ttf",
+   "bold": "FiraSans-Bold.ttf",
+   "variable": false,
+   "format": "truetype"
+  },
+  {
+   "id": "fira-condensed",
+   "family": "Fira Sans Condensed",
+   "regular": "FiraSansCondensed-Regular.ttf",
+   "bold": "FiraSansCondensed-Bold.ttf",
+   "variable": false,
+   "format": "truetype"
+  },
+  {
+   "id": "open-sans",
+   "family": "Open Sans",
+   "regular": "OpenSans-Regular.ttf",
+   "bold": "OpenSans-Bold.ttf",
+   "variable": false,
+   "format": "truetype"
+  },
+  {
+   "id": "open-condensed",
+   "family": "Open Sans Condensed",
+   "regular": "OpenSansCondensed-Regular.ttf",
+   "bold": "OpenSansCondensed-Bold.ttf",
+   "variable": false,
+   "format": "truetype"
+  },
+  {
+   "id": "cantarell",
+   "family": "Cantarell",
+   "regular": "Cantarell-Regular.otf",
+   "bold": null,
+   "variable": true,
+   "format": "opentype"
+  },
+  {
+   "id": "adwaita-sans",
+   "family": "Adwaita Sans",
+   "regular": "AdwaitaSans-Regular.ttf",
+   "bold": null,
+   "variable": true,
+   "format": "truetype"
+  },
+  {
+   "id": "dejavu-serif",
+   "family": "DejaVu Serif",
+   "regular": "DejaVuSerif-Regular.ttf",
+   "bold": "DejaVuSerif-Bold.ttf",
+   "variable": false,
+   "format": "truetype"
+  },
+  {
+   "id": "dejavu-serif-condensed",
+   "family": "DejaVu Serif Condensed",
+   "regular": "DejaVuSerifCondensed-Regular.ttf",
+   "bold": "DejaVuSerifCondensed-Bold.ttf",
+   "variable": false,
+   "format": "truetype"
+  },
+  {
+   "id": "liberation-serif",
+   "family": "Liberation Serif",
+   "regular": "LiberationSerif-Regular.ttf",
+   "bold": "LiberationSerif-Bold.ttf",
+   "variable": false,
+   "format": "truetype"
+  },
+  {
+   "id": "noto-serif",
+   "family": "Noto Serif",
+   "regular": "NotoSerif-Regular.ttf",
+   "bold": "NotoSerif-Bold.ttf",
+   "variable": false,
+   "format": "truetype"
+  },
+  {
+   "id": "dejavu-mono",
+   "family": "DejaVu Sans Mono",
+   "regular": "DejaVuSansMono-Regular.ttf",
+   "bold": "DejaVuSansMono-Bold.ttf",
+   "variable": false,
+   "format": "truetype"
+  },
+  {
+   "id": "liberation-mono",
+   "family": "Liberation Mono",
+   "regular": "LiberationMono-Regular.ttf",
+   "bold": "LiberationMono-Bold.ttf",
+   "variable": false,
+   "format": "truetype"
+  },
+  {
+   "id": "noto-mono",
+   "family": "Noto Sans Mono",
+   "regular": "NotoSansMono-Regular.ttf",
+   "bold": "NotoSansMono-Bold.ttf",
+   "variable": false,
+   "format": "truetype"
+  },
+  {
+   "id": "adwaita-mono",
+   "family": "Adwaita Mono",
+   "regular": "AdwaitaMono-Regular.ttf",
+   "bold": "AdwaitaMono-Bold.ttf",
+   "variable": false,
+   "format": "truetype"
+  },
+  {
+   "id": "hack",
+   "family": "Hack",
+   "regular": "Hack-Regular.ttf",
+   "bold": "Hack-Bold.ttf",
+   "variable": false,
+   "format": "truetype"
+  },
+  {
+   "id": "fantasque",
+   "family": "FantasqueSansM Nerd Font",
+   "regular": "FantasqueSansMNerdFont-Regular.ttf",
+   "bold": "FantasqueSansMNerdFont-Bold.ttf",
+   "variable": false,
+   "format": "truetype"
+  },
+  {
+   "id": "bebas-neue",
+   "family": "Bebas Neue",
+   "regular": "BebasNeue-Regular.ttf",
+   "bold": null,
+   "variable": false,
+   "format": "truetype"
+  },
+  {
+   "id": "anton",
+   "family": "Anton",
+   "regular": "Anton-Regular.ttf",
+   "bold": null,
+   "variable": false,
+   "format": "truetype"
+  },
+  {
+   "id": "archivo-black",
+   "family": "Archivo Black",
+   "regular": "ArchivoBlack-Regular.ttf",
+   "bold": null,
+   "variable": false,
+   "format": "truetype"
+  },
+  {
+   "id": "alfa-slab",
+   "family": "Alfa Slab One",
+   "regular": "AlfaSlabOne-Regular.ttf",
+   "bold": null,
+   "variable": false,
+   "format": "truetype"
+  },
+  {
+   "id": "bungee",
+   "family": "Bungee",
+   "regular": "Bungee-Regular.ttf",
+   "bold": null,
+   "variable": false,
+   "format": "truetype"
+  },
+  {
+   "id": "righteous",
+   "family": "Righteous",
+   "regular": "Righteous-Regular.ttf",
+   "bold": null,
+   "variable": false,
+   "format": "truetype"
+  },
+  {
+   "id": "monoton",
+   "family": "Monoton",
+   "regular": "Monoton-Regular.ttf",
+   "bold": null,
+   "variable": false,
+   "format": "truetype"
+  },
+  {
+   "id": "rubik-mono",
+   "family": "Rubik Mono One",
+   "regular": "RubikMonoOne-Regular.ttf",
+   "bold": null,
+   "variable": false,
+   "format": "truetype"
+  },
+  {
+   "id": "orbitron",
+   "family": "Orbitron",
+   "regular": "Orbitron-Regular.ttf",
+   "bold": null,
+   "variable": true,
+   "format": "truetype"
+  },
+  {
+   "id": "audiowide",
+   "family": "Audiowide",
+   "regular": "Audiowide-Regular.ttf",
+   "bold": null,
+   "variable": false,
+   "format": "truetype"
+  },
+  {
+   "id": "cinzel",
+   "family": "Cinzel",
+   "regular": "Cinzel-Regular.ttf",
+   "bold": null,
+   "variable": true,
+   "format": "truetype"
+  },
+  {
+   "id": "playfair",
+   "family": "Playfair Display",
+   "regular": "PlayfairDisplay-Regular.ttf",
+   "bold": null,
+   "variable": true,
+   "format": "truetype"
+  },
+  {
+   "id": "pacifico",
+   "family": "Pacifico",
+   "regular": "Pacifico-Regular.ttf",
+   "bold": null,
+   "variable": false,
+   "format": "truetype"
+  },
+  {
+   "id": "lobster",
+   "family": "Lobster",
+   "regular": "Lobster-Regular.ttf",
+   "bold": null,
+   "variable": false,
+   "format": "truetype"
+  },
+  {
+   "id": "great-vibes",
+   "family": "Great Vibes",
+   "regular": "GreatVibes-Regular.ttf",
+   "bold": null,
+   "variable": false,
+   "format": "truetype"
+  },
+  {
+   "id": "bangers",
+   "family": "Bangers",
+   "regular": "Bangers-Regular.ttf",
+   "bold": null,
+   "variable": false,
+   "format": "truetype"
+  },
+  {
+   "id": "creepster",
+   "family": "Creepster",
+   "regular": "Creepster-Regular.ttf",
+   "bold": null,
+   "variable": false,
+   "format": "truetype"
+  },
+  {
+   "id": "press-start-2p",
+   "family": "Press Start 2P",
+   "regular": "PressStart2P-Regular.ttf",
+   "bold": null,
+   "variable": false,
+   "format": "truetype"
+  },
+  {
+   "id": "vt323",
+   "family": "VT323",
+   "regular": "VT323-Regular.ttf",
+   "bold": null,
+   "variable": false,
+   "format": "truetype"
+  },
+  {
+   "id": "silkscreen",
+   "family": "Silkscreen",
+   "regular": "Silkscreen-Regular.ttf",
+   "bold": "Silkscreen-Bold.ttf",
+   "variable": false,
+   "format": "truetype"
+  }
+ ]
+}

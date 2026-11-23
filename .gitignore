@@ -1,0 +1,27 @@
+# local runtime
+venv/
+.venv/
+__pycache__/
+*.pyc
+output/
+*.pid
+*.log
+
+# downloaded caches (rebuild with sync_data.py)
+data/raw/
+data/live/
+data/designs/
+data/*.db-journal
+data/*.db-wal
+data/*.db-shm
+
+# never commit
+.env
+.env.*
+*.pem
+*.key
+id_rsa*
+*credential*.json
+*secret*.json
+token*.txt
+*api*key*.txt

@@ -1,0 +1,61 @@
+/* Label faces — generated from manifest.json; paths are local so the app works offline.
+   Every picker name is drawn with these files on every OS. */
+@font-face { font-family: "DejaVu Sans"; src: url("/static/fonts/label/DejaVuSans-Regular.ttf") format("truetype"); font-weight: 400; font-style: normal; font-display: swap; }
+@font-face { font-family: "DejaVu Sans"; src: url("/static/fonts/label/DejaVuSans-Bold.ttf") format("truetype"); font-weight: 700; font-style: normal; font-display: swap; }
+@font-face { font-family: "DejaVu Sans Condensed"; src: url("/static/fonts/label/DejaVuSansCondensed-Regular.ttf") format("truetype"); font-weight: 400; font-style: normal; font-display: swap; }
+@font-face { font-family: "DejaVu Sans Condensed"; src: url("/static/fonts/label/DejaVuSansCondensed-Bold.ttf") format("truetype"); font-weight: 700; font-style: normal; font-display: swap; }
+@font-face { font-family: "Liberation Sans"; src: url("/static/fonts/label/LiberationSans-Regular.ttf") format("truetype"); font-weight: 400; font-style: normal; font-display: swap; }
+@font-face { font-family: "Liberation Sans"; src: url("/static/fonts/label/LiberationSans-Bold.ttf") format("truetype"); font-weight: 700; font-style: normal; font-display: swap; }
+@font-face { font-family: "Noto Sans"; src: url("/static/fonts/label/NotoSans-Regular.ttf") format("truetype"); font-weight: 400; font-style: normal; font-display: swap; }
+@font-face { font-family: "Noto Sans"; src: url("/static/fonts/label/NotoSans-Bold.ttf") format("truetype"); font-weight: 700; font-style: normal; font-display: swap; }
+@font-face { font-family: "Fira Sans"; src: url("/static/fonts/label/FiraSans-Regular.ttf") format("truetype"); font-weight: 400; font-style: normal; font-display: swap; }
+@font-face { font-family: "Fira Sans"; src: url("/static/fonts/label/FiraSans-Bold.ttf") format("truetype"); font-weight: 700; font-style: normal; font-display: swap; }
+@font-face { font-family: "Fira Sans Condensed"; src: url("/static/fonts/label/FiraSansCondensed-Regular.ttf") format("truetype"); font-weight: 400; font-style: normal; font-display: swap; }
+@font-face { font-family: "Fira Sans Condensed"; src: url("/static/fonts/label/FiraSansCondensed-Bold.ttf") format("truetype"); font-weight: 700; font-style: normal; font-display: swap; }
+@font-face { font-family: "Open Sans"; src: url("/static/fonts/label/OpenSans-Regular.ttf") format("truetype"); font-weight: 400; font-style: normal; font-display: swap; }
+@font-face { font-family: "Open Sans"; src: url("/static/fonts/label/OpenSans-Bold.ttf") format("truetype"); font-weight: 700; font-style: normal; font-display: swap; }
+@font-face { font-family: "Open Sans Condensed"; src: url("/static/fonts/label/OpenSansCondensed-Regular.ttf") format("truetype"); font-weight: 400; font-style: normal; font-display: swap; }
+@font-face { font-family: "Open Sans Condensed"; src: url("/static/fonts/label/OpenSansCondensed-Bold.ttf") format("truetype"); font-weight: 700; font-style: normal; font-display: swap; }
+@font-face { font-family: "Cantarell"; src: url("/static/fonts/label/Cantarell-Regular.otf") format("opentype"); font-weight: 400 900; font-style: normal; font-display: swap; }
+@font-face { font-family: "Adwaita Sans"; src: url("/static/fonts/label/AdwaitaSans-Regular.ttf") format("truetype"); font-weight: 400 900; font-style: normal; font-display: swap; }
+@font-face { font-family: "DejaVu Serif"; src: url("/static/fonts/label/DejaVuSerif-Regular.ttf") format("truetype"); font-weight: 400; font-style: normal; font-display: swap; }
+@font-face { font-family: "DejaVu Serif"; src: url("/static/fonts/label/DejaVuSerif-Bold.ttf") format("truetype"); font-weight: 700; font-style: normal; font-display: swap; }
+@font-face { font-family: "DejaVu Serif Condensed"; src: url("/static/fonts/label/DejaVuSerifCondensed-Regular.ttf") format("truetype"); font-weight: 400; font-style: normal; font-display: swap; }
+@font-face { font-family: "DejaVu Serif Condensed"; src: url("/static/fonts/label/DejaVuSerifCondensed-Bold.ttf") format("truetype"); font-weight: 700; font-style: normal; font-display: swap; }
+@font-face { font-family: "Liberation Serif"; src: url("/static/fonts/label/LiberationSerif-Regular.ttf") format("truetype"); font-weight: 400; font-style: normal; font-display: swap; }
+@font-face { font-family: "Liberation Serif"; src: url("/static/fonts/label/LiberationSerif-Bold.ttf") format("truetype"); font-weight: 700; font-style: normal; font-display: swap; }
+@font-face { font-family: "Noto Serif"; src: url("/static/fonts/label/NotoSerif-Regular.ttf") format("truetype"); font-weight: 400; font-style: normal; font-display: swap; }
+@font-face { font-family: "Noto Serif"; src: url("/static/fonts/label/NotoSerif-Bold.ttf") format("truetype"); font-weight: 700; font-style: normal; font-display: swap; }
+@font-face { font-family: "DejaVu Sans Mono"; src: url("/static/fonts/label/DejaVuSansMono-Regular.ttf") format("truetype"); font-weight: 400; font-style: normal; font-display: swap; }
+@font-face { font-family: "DejaVu Sans Mono"; src: url("/static/fonts/label/DejaVuSansMono-Bold.ttf") format("truetype"); font-weight: 700; font-style: normal; font-display: swap; }
+@font-face { font-family: "Liberation Mono"; src: url("/static/fonts/label/LiberationMono-Regular.ttf") format("truetype"); font-weight: 400; font-style: normal; font-display: swap; }
+@font-face { font-family: "Liberation Mono"; src: url("/static/fonts/label/LiberationMono-Bold.ttf") format("truetype"); font-weight: 700; font-style: normal; font-display: swap; }
+@font-face { font-family: "Noto Sans Mono"; src: url("/static/fonts/label/NotoSansMono-Regular.ttf") format("truetype"); font-weight: 400; font-style: normal; font-display: swap; }
+@font-face { font-family: "Noto Sans Mono"; src: url("/static/fonts/label/NotoSansMono-Bold.ttf") format("truetype"); font-weight: 700; font-style: normal; font-display: swap; }
+@font-face { font-family: "Adwaita Mono"; src: url("/static/fonts/label/AdwaitaMono-Regular.ttf") format("truetype"); font-weight: 400; font-style: normal; font-display: swap; }
+@font-face { font-family: "Adwaita Mono"; src: url("/static/fonts/label/AdwaitaMono-Bold.ttf") format("truetype"); font-weight: 700; font-style: normal; font-display: swap; }
+@font-face { font-family: "Hack"; src: url("/static/fonts/label/Hack-Regular.ttf") format("truetype"); font-weight: 400; font-style: normal; font-display: swap; }
+@font-face { font-family: "Hack"; src: url("/static/fonts/label/Hack-Bold.ttf") format("truetype"); font-weight: 700; font-style: normal; font-display: swap; }
+@font-face { font-family: "FantasqueSansM Nerd Font"; src: url("/static/fonts/label/FantasqueSansMNerdFont-Regular.ttf") format("truetype"); font-weight: 400; font-style: normal; font-display: swap; }
+@font-face { font-family: "FantasqueSansM Nerd Font"; src: url("/static/fonts/label/FantasqueSansMNerdFont-Bold.ttf") format("truetype"); font-weight: 700; font-style: normal; font-display: swap; }
+@font-face { font-family: "Bebas Neue"; src: url("/static/fonts/label/BebasNeue-Regular.ttf") format("truetype"); font-weight: 400; font-style: normal; font-display: swap; }
+@font-face { font-family: "Anton"; src: url("/static/fonts/label/Anton-Regular.ttf") format("truetype"); font-weight: 400; font-style: normal; font-display: swap; }
+@font-face { font-family: "Archivo Black"; src: url("/static/fonts/label/ArchivoBlack-Regular.ttf") format("truetype"); font-weight: 400; font-style: normal; font-display: swap; }
+@font-face { font-family: "Alfa Slab One"; src: url("/static/fonts/label/AlfaSlabOne-Regular.ttf") format("truetype"); font-weight: 400; font-style: normal; font-display: swap; }
+@font-face { font-family: "Bungee"; src: url("/static/fonts/label/Bungee-Regular.ttf") format("truetype"); font-weight: 400; font-style: normal; font-display: swap; }
+@font-face { font-family: "Righteous"; src: url("/static/fonts/label/Righteous-Regular.ttf") format("truetype"); font-weight: 400; font-style: normal; font-display: swap; }
+@font-face { font-family: "Monoton"; src: url("/static/fonts/label/Monoton-Regular.ttf") format("truetype"); font-weight: 400; font-style: normal; font-display: swap; }
+@font-face { font-family: "Rubik Mono One"; src: url("/static/fonts/label/RubikMonoOne-Regular.ttf") format("truetype"); font-weight: 400; font-style: normal; font-display: swap; }
+@font-face { font-family: "Orbitron"; src: url("/static/fonts/label/Orbitron-Regular.ttf") format("truetype"); font-weight: 400 900; font-style: normal; font-display: swap; }
+@font-face { font-family: "Audiowide"; src: url("/static/fonts/label/Audiowide-Regular.ttf") format("truetype"); font-weight: 400; font-style: normal; font-display: swap; }
+@font-face { font-family: "Cinzel"; src: url("/static/fonts/label/Cinzel-Regular.ttf") format("truetype"); font-weight: 400 900; font-style: normal; font-display: swap; }
+@font-face { font-family: "Playfair Display"; src: url("/static/fonts/label/PlayfairDisplay-Regular.ttf") format("truetype"); font-weight: 400 900; font-style: normal; font-display: swap; }
+@font-face { font-family: "Pacifico"; src: url("/static/fonts/label/Pacifico-Regular.ttf") format("truetype"); font-weight: 400; font-style: normal; font-display: swap; }
+@font-face { font-family: "Lobster"; src: url("/static/fonts/label/Lobster-Regular.ttf") format("truetype"); font-weight: 400; font-style: normal; font-display: swap; }
+@font-face { font-family: "Great Vibes"; src: url("/static/fonts/label/GreatVibes-Regular.ttf") format("truetype"); font-weight: 400; font-style: normal; font-display: swap; }
+@font-face { font-family: "Bangers"; src: url("/static/fonts/label/Bangers-Regular.ttf") format("truetype"); font-weight: 400; font-style: normal; font-display: swap; }
+@font-face { font-family: "Creepster"; src: url("/static/fonts/label/Creepster-Regular.ttf") format("truetype"); font-weight: 400; font-style: normal; font-display: swap; }
+@font-face { font-family: "Press Start 2P"; src: url("/static/fonts/label/PressStart2P-Regular.ttf") format("truetype"); font-weight: 400; font-style: normal; font-display: swap; }
+@font-face { font-family: "VT323"; src: url("/static/fonts/label/VT323-Regular.ttf") format("truetype"); font-weight: 400; font-style: normal; font-display: swap; }
+@font-face { font-family: "Silkscreen"; src: url("/static/fonts/label/Silkscreen-Regular.ttf") format("truetype"); font-weight: 400; font-style: normal; font-display: swap; }
+@font-face { font-family: "Silkscreen"; src: url("/static/fonts/label/Silkscreen-Bold.ttf") format("truetype"); font-weight: 700; font-style: normal; font-display: swap; }

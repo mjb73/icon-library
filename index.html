@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="cyberpunk">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Icon Library</title>
+  <link rel="stylesheet" href="/static/fonts/ui/ui.css?v={{asset_v}}">
+  <link rel="stylesheet" href="/static/fonts/label/label.css?v={{asset_v}}">
+  <link rel="stylesheet" href="/static/styles.css?v={{asset_v}}">
+</head>
+<body>
+  <div class="bg-grid"></div>
+
+  <header class="topbar">
+    <div class="brand">
+      <span class="brand-mark">~/</span>
+      <span class="brand-name gradient-text">Icon Library</span>
+    </div>
+    <div class="stats" id="stats">loading index…</div>
+    <select id="themeSelect" class="theme-select" aria-label="Theme">
+      <option value="cyberpunk">Cyberpunk Neon</option>
+      <option value="ember">Obsidian Ember</option>
+      <option value="aurora">Midnight Aurora</option>
+      <option value="inferno">Dark Inferno</option>
+    </select>
+  </header>
+
+  <main class="layout">
+    <section class="pane search-pane">
+      <div class="searchbar">
+        <input id="q" type="search" autocomplete="off" spellcheck="false"
+               placeholder="Search 131,000 open-source icons — try umbrella">
+        <button id="searchBtn" class="primary">Search</button>
+      </div>
+
+      <div class="filters">
+        <button id="setsToggle" class="chip-btn">Sets: all</button>
+        <span id="resultInfo" class="muted"></span>
+      </div>
+      <div id="setChips" class="chip-row collapsed"></div>
+
+      <div id="grid" class="icon-grid"></div>
+      <div id="empty" class="empty">
+        <div class="empty-mark">◇</div>
+        <p>Type a theme or object name. The index covers 30 bundled collections;
+           anything else is pulled live from the full Iconify set of 243.</p>
+        <div class="suggestions" id="suggestions"></div>
+      </div>
+      <div id="moreWrap" class="more-wrap hidden">
+        <button id="moreBtn" class="chip-btn">Load more</button>
+      </div>
+    </section>
+
+    <aside class="pane composer">
+      <div class="launcher-bar hidden" id="launcherBar">
+        <div class="lb-head">
+          <span class="lb-title" id="launcherTarget">Replacing icon…</span>
+          <span class="lb-dot" aria-hidden="true"></span>
+        </div>
+        <div class="lb-actions">
+          <button id="lbSave" class="primary" disabled>Save to launcher</button>
+          <button id="lbCancel" class="chip-btn">Cancel</button>
+        </div>
+        <p class="lb-note" id="launcherNote">Pick a glyph, set the colour, then Save — the card updates straight away.</p>
+      </div>
+
+      <!-- The stage never leaves the screen: the composer is capped to the
+           viewport height and only the tab panel below it scrolls. -->
+      <div class="stage-wrap">
+        <canvas id="stage" width="1024" height="1024" aria-label="Icon preview"></canvas>
+      </div>
+      <div class="sel-info" id="selInfo">
+        <span class="sel-name">No icon selected</span>
+        <span class="sel-meta muted">pick one from the grid</span>
+      </div>
+
+      <nav class="tabs" id="tabs" role="tablist">
+        <button type="button" data-tab="icons" class="active" role="tab">Icons</button>
+        <button type="button" data-tab="bg" role="tab">Background</button>
+        <button type="button" data-tab="label" role="tab">Label</button>
+        <button type="button" data-tab="designs" role="tab">Saved<span id="designCount" class="tab-badge"></span></button>
+      </nav>
+
+      <div class="tabpanels">
+        <section class="tabpanel active" data-panel="icons" role="tabpanel" aria-label="Icon layers">
+          <div class="layer-strip" id="layerStrip" role="group" aria-label="Icon layers"></div>
+          <div class="row">
+            <button id="layerAdd" class="chip-btn" type="button">+ Icon</button>
+            <button id="layerRemove" class="chip-btn" type="button">Remove</button>
+            <span id="layerNote" class="mono muted tiny">1 of 1</span>
+          </div>
+
+          <div class="control">
+            <div class="control-head"><label for="inset">Icon size</label><span id="insetLabel" class="mono muted">56%</span></div>
+            <input id="inset" class="slider" type="range" min="4" max="140" value="56" aria-label="Icon size">
+          </div>
+
+          <div class="label-xy">
+            <div>
+              <div class="control-head"><label for="iconX">Position X</label><span id="iconXOut" class="mono muted">50%</span></div>
+              <input id="iconX" class="slider" type="range" min="0" max="100" value="50" aria-label="Icon horizontal position">
+            </div>
+            <div>
+              <div class="control-head"><label for="iconY">Position Y</label><span id="iconYOut" class="mono muted">50%</span></div>
+              <input id="iconY" class="slider" type="range" min="0" max="100" value="50" aria-label="Icon vertical position">
+            </div>
+          </div>
+
+          <div class="control">
+            <div class="control-head"><label for="rotation">Rotation</label><span id="rotationLabel" class="mono muted">0°</span></div>
+            <input id="rotation" class="slider" type="range" min="0" max="359" value="0" aria-label="Rotation in degrees">
+          </div>
+
+          <div class="control">
+            <div class="control-head">
+              <label>Icon colour <span id="fgLayer" class="mono muted tiny"></span></label>
+              <span class="head-right">
+                <span id="fgNote" class="mono muted tiny">5.7:1</span>
+                <label class="switch"><input id="autoFg" type="checkbox" checked><span></span><em>auto</em></label>
+              </span>
+            </div>
+            <div class="row">
+              <input id="fgHex" class="hex" type="text" value="#FFFFFF" spellcheck="false" aria-label="Icon colour hex">
+              <input id="fgPick" type="color" value="#ffffff" aria-label="Icon colour picker">
+              <button id="fgAll" class="chip-btn hidden" type="button"
+                      title="Paint every glyph with this colour">all layers</button>
+            </div>
+          </div>
+
+          <div class="control">
+            <div class="control-head">
+              <label>Grayscale icon</label>
+              <label class="switch"><input id="gray" type="checkbox"><span></span><em id="grayState">off</em></label>
+            </div>
+            <p class="hint">Luminance conversion, alpha kept — multicolour sets only.</p>
+          </div>
+        </section>
+
+        <section class="tabpanel" data-panel="bg" role="tabpanel" aria-label="Background">
+          <div class="control">
+            <div class="control-head">
+              <label>Background</label>
+              <label class="switch"><input id="transparent" type="checkbox"><span></span><em>transparent</em></label>
+            </div>
+            <div class="bg-presets hidden" id="bgPresets" role="group" aria-label="Group colour presets"></div>
+            <div class="colour-panel" id="colourPanel">
+              <canvas id="wheel" width="220" height="220" aria-label="Colour wheel"></canvas>
+              <div class="colour-side">
+                <div class="row">
+                  <input id="hex" class="hex" type="text" value="#1e6f8c" spellcheck="false" aria-label="Hex colour">
+                  <input id="bgPick" type="color" value="#1e6f8c" aria-label="Background picker">
+                </div>
+                <span class="tiny mono muted">brightness</span>
+                <input id="val" class="slider" type="range" min="6" max="100" value="90" aria-label="Brightness">
+              </div>
+            </div>
+          </div>
+
+          <div class="control" id="shapeControl">
+            <div class="control-head"><label>Shape</label></div>
+            <div class="seg" id="shapeSeg" role="group" aria-label="Background shape">
+              <button data-shape="squircle" class="active">Squircle</button>
+              <button data-shape="circle">Circle</button>
+              <button data-shape="square">Square</button>
+              <button data-shape="full">Full</button>
+            </div>
+          </div>
+        </section>
+
+        <section class="tabpanel" data-panel="label" role="tabpanel" aria-label="Label">
+          <div class="control" id="labelControl">
+            <div class="control-head">
+              <label for="labelText">Label</label>
+              <span class="mono muted tiny">on top of the icons</span>
+            </div>
+            <input id="labelText" class="hex label-input" type="text" maxlength="16"
+                   placeholder="2 · AI · v3" autocomplete="off" spellcheck="false"
+                   aria-label="Label text">
+            <div class="row">
+              <div class="font-picker" id="fontPicker">
+                <button type="button" id="fontPickerBtn"
+                        class="theme-select label-font font-picker-btn"
+                        aria-haspopup="listbox" aria-expanded="false"
+                        aria-controls="fontPickerList">
+                  <span id="fontPickerLabel">DejaVu Sans</span>
+                  <span class="font-picker-caret" aria-hidden="true"></span>
+                </button>
+                <select id="labelFont" hidden aria-label="Label font">
+                  <optgroup label="Sans">
+                    <option value="dejavu-sans">DejaVu Sans</option>
+                    <option value="dejavu-condensed">DejaVu Condensed</option>
+                    <option value="liberation-sans">Liberation Sans</option>
+                    <option value="noto-sans">Noto Sans</option>
+                    <option value="fira-sans">Fira Sans</option>
+                    <option value="fira-condensed">Fira Condensed</option>
+                    <option value="open-sans">Open Sans</option>
+                    <option value="open-condensed">Open Condensed</option>
+                    <option value="cantarell">Cantarell</option>
+                    <option value="adwaita-sans">Adwaita Sans</option>
+                  </optgroup>
+                  <optgroup label="Serif">
+                    <option value="dejavu-serif">DejaVu Serif</option>
+                    <option value="dejavu-serif-condensed">DejaVu Serif Cond.</option>
+                    <option value="liberation-serif">Liberation Serif</option>
+                    <option value="noto-serif">Noto Serif</option>
+                  </optgroup>
+                  <optgroup label="Mono">
+                    <option value="dejavu-mono">DejaVu Mono</option>
+                    <option value="liberation-mono">Liberation Mono</option>
+                    <option value="noto-mono">Noto Mono</option>
+                    <option value="adwaita-mono">Adwaita Mono</option>
+                    <option value="hack">Hack</option>
+                    <option value="fantasque">Fantasque Sans</option>
+                  </optgroup>
+                  <optgroup label="Display">
+                    <option value="bebas-neue">Bebas Neue</option>
+                    <option value="anton">Anton</option>
+                    <option value="archivo-black">Archivo Black</option>
+                    <option value="alfa-slab">Alfa Slab One</option>
+                    <option value="bungee">Bungee</option>
+                    <option value="righteous">Righteous</option>
+                    <option value="monoton">Monoton</option>
+                    <option value="rubik-mono">Rubik Mono One</option>
+                    <option value="orbitron">Orbitron</option>
+                    <option value="audiowide">Audiowide</option>
+                    <option value="cinzel">Cinzel</option>
+                    <option value="playfair">Playfair Display</option>
+                  </optgroup>
+                  <optgroup label="Script">
+                    <option value="pacifico">Pacifico</option>
+                    <option value="lobster">Lobster</option>
+                    <option value="great-vibes">Great Vibes</option>
+                  </optgroup>
+                  <optgroup label="Retro">
+                    <option value="bangers">Bangers</option>
+                    <option value="creepster">Creepster</option>
+                    <option value="press-start-2p">Press Start 2P</option>
+                    <option value="vt323">VT323</option>
+                    <option value="silkscreen">Silkscreen</option>
+                  </optgroup>
+                </select>
+              </div>
+              <label class="switch"><input id="labelBold" type="checkbox" checked><span></span><em>bold</em></label>
+            </div>
+            <div class="control-head"><label for="labelSize">Label size</label><span id="labelSizeOut" class="mono muted">30%</span></div>
+            <input id="labelSize" class="slider" type="range" min="4" max="100" value="30" aria-label="Label size">
+            <div class="label-xy">
+              <div>
+                <div class="control-head"><label for="labelX">X</label><span id="labelXOut" class="mono muted">50%</span></div>
+                <input id="labelX" class="slider" type="range" min="0" max="100" value="50" aria-label="Label horizontal position">
+              </div>
+              <div>
+                <div class="control-head"><label for="labelY">Y</label><span id="labelYOut" class="mono muted">50%</span></div>
+                <input id="labelY" class="slider" type="range" min="0" max="100" value="50" aria-label="Label vertical position">
+              </div>
+            </div>
+            <div class="row">
+              <input id="labelHex" class="hex" type="text" value="#FFFFFF" spellcheck="false" aria-label="Label colour hex">
+              <input id="labelPick" type="color" value="#ffffff" aria-label="Label colour picker">
+              <button id="labelFromIcon" class="chip-btn" type="button" title="Use the icon's colour">= icon</button>
+            </div>
+          </div>
+        </section>
+
+        <section class="tabpanel" data-panel="designs" role="tabpanel" aria-label="Saved designs">
+          <div class="control">
+            <div class="control-head">
+              <label for="designName">Design name</label>
+              <span id="designNote" class="mono muted tiny">autosave</span>
+            </div>
+            <input id="designName" class="hex label-input" type="text" maxlength="40"
+                   placeholder="named from the glyph" autocomplete="off" spellcheck="false"
+                   aria-label="Design name">
+            <div class="row">
+              <button id="designSave" class="chip-btn" type="button">Save now</button>
+              <button id="designNew" class="chip-btn" type="button">+ New design</button>
+            </div>
+          </div>
+          <div id="designGrid" class="design-grid" role="list" aria-label="Saved designs"></div>
+          <p class="hint">Every icon you compose files itself here a second after you stop
+             changing it — open one to carry on from where you left it.</p>
+        </section>
+      </div>
+
+      <div class="export-row">
+        <button id="exportBtn" class="primary wide" disabled>Export set</button>
+        <button id="pngBtn" class="chip-btn" disabled>PNG</button>
+        <button id="svgBtn" class="chip-btn" disabled>SVG</button>
+      </div>
+      <p class="hint mono" id="exportNote">zip: 1024→32 px PNGs, 256 px .ico, SVG, licence</p>
+    </aside>
+  </main>
+
+  <script src="/static/app.js?v={{asset_v}}"></script>
+</body>
+</html>
