@@ -25,3 +25,7 @@ id_rsa*
 *secret*.json
 token*.txt
 *api*key*.txt
+build/
+Output/
+build/win/
+build/tmp/

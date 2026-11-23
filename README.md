@@ -19,7 +19,17 @@ fonts, and the Python wheels. Install and start it with no downloads.
 
 ## Run
 
-**Windows**
+**Windows — installer**
+
+Download `IconLibrary-Setup-<version>.exe` from
+[Releases](https://github.com/mjb73/icon-library/releases) and run it. No Python
+is needed: the installer carries the interpreter, the index and the fonts, and
+installs per-user (no admin prompt). It puts an Icon Library shortcut in the
+Start menu (and on the Desktop if you tick the box) and opens
+http://127.0.0.1:7876. Designs are kept in `%LocalAppData%\IconLibrary\designs`,
+so uninstalling never deletes them.
+
+**Windows — from source**
 
 ```bat
 install.bat
@@ -28,6 +38,7 @@ run.bat
 
 `run.bat` opens http://127.0.0.1:7876 once the server is up. If Windows asks
 about Python, install it from python.org and tick *Add python.exe to PATH*.
+Building the installer yourself: see `WINDOWS-BUILD.md`.
 
 **Linux / macOS**
 

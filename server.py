@@ -13,6 +13,7 @@ import base64
 import html as html_lib
 import io
 import json
+import os
 import re
 import sqlite3
 import time
@@ -33,7 +34,11 @@ from PIL import Image
 RESAMPLE = Image.Resampling.LANCZOS
 
 ROOT = Path(__file__).resolve().parent
-DB_PATH = ROOT / "data" / "icons.db"
+# A frozen/installed build keeps the index read-only next to the program but must
+# write design records and the live-icon cache somewhere the user owns, so both
+# locations are overridable from the environment.
+DATA_DIR = Path(os.environ.get("ICON_LIBRARY_DATA") or (ROOT / "data"))
+DB_PATH = Path(os.environ.get("ICON_LIBRARY_DB") or (DATA_DIR / "icons.db"))
 STATIC = ROOT / "static"
 
 EXPORT_SIZES = [1024, 512, 384, 256, 192, 180, 144, 128, 96, 72, 48, 32]
@@ -321,7 +326,7 @@ def search(
     }
 
 
-LIVE_DIR = ROOT / "data" / "live"
+LIVE_DIR = DATA_DIR / "live"
 _SAFE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,80}$")
 
 
@@ -497,7 +502,7 @@ async def export(payload: dict):
 # previous icon can be reopened and tweaked instead of rebuilt. State is the same
 # shape the page keeps in localStorage (bg/fg/shape/text/layers with the glyph SVG
 # bodies inlined), which makes "load" a plain apply — no re-search, no network.
-DESIGNS_DIR = ROOT / "data" / "designs"
+DESIGNS_DIR = DATA_DIR / "designs"
 _DESIGN_ID = re.compile(r"^[0-9a-f]{12}$")
 MAX_DESIGN_BYTES = 4 * 1024 * 1024
 
