@@ -13,7 +13,7 @@ const LS_KEY = "iconLibrary.v1";
 
 /* Text overlay defaults — kept in one object so "+ New design" can hand the
    label back exactly as the composer starts up. */
-const TEXT_DEFAULT = { value: "", size: 0.30, x: 0.5, y: 0.5, font: "dejavu-sans", bold: true, colour: "#ffffff" };
+const TEXT_DEFAULT = { value: "", size: 0.30, x: 0.5, y: 0.5, rot: 0, font: "dejavu-sans", bold: true, colour: "#ffffff" };
 
 const S = {
   bg: "#1e6f8c",
@@ -307,7 +307,9 @@ let measureCtx = null;
 /* Geometry for the label, shared by the canvas and the SVG so they cannot drift.
    The text is centred on its ink box: the canvas gives us the ink ascent/descent,
    and the resulting alphabetic baseline is what the SVG <text> is given — both
-   then anchor on the baseline, which is the one number Pango and Chrome agree on. */
+   then anchor on the baseline, which is the one number Pango and Chrome agree on.
+   `rot` turns the text about the anchor point (its own ink centre), so a 90° label
+   runs up the middle of the frame instead of sliding off it. */
 function labelMetrics() {
   const str = String(S.text.value || "").trim();
   if (!str) return null;
@@ -317,19 +319,28 @@ function labelMetrics() {
   const asc = Number.isFinite(m.actualBoundingBoxAscent) ? m.actualBoundingBoxAscent : labelPx() * 0.72;
   const desc = Number.isFinite(m.actualBoundingBoxDescent) ? m.actualBoundingBoxDescent : labelPx() * 0.2;
   const x = S.text.x * 1024;
-  const baseline = S.text.y * 1024 + (asc - desc) / 2;
-  return { str, x, baseline, px: labelPx(), width: m.width || 0, asc, desc };
+  const y = S.text.y * 1024;
+  /* Baseline offset from the anchor: positive = down, so the ink box straddles y. */
+  const dy = (asc - desc) / 2;
+  return { str, x, y, dy, baseline: y + dy, rot: labelRot(), px: labelPx(), width: m.width || 0, asc, desc };
 }
+
+const labelRot = () => {
+  const r = Number(S.text.rot);
+  return Number.isFinite(r) ? ((r % 360) + 360) % 360 : 0;
+};
 
 function drawLabel(g) {
   const mm = labelMetrics();
   if (!mm) return;
   g.save();
+  g.translate(mm.x, mm.y);
+  if (mm.rot) g.rotate((mm.rot * Math.PI) / 180);
   g.font = labelFontCSS();
   g.textAlign = "center";
   g.textBaseline = "alphabetic";
   g.fillStyle = S.text.colour;
-  g.fillText(mm.str, mm.x, mm.baseline);
+  g.fillText(mm.str, 0, mm.dy);
   g.restore();
 }
 
@@ -340,10 +351,15 @@ const xmlEsc = (s) => String(s)
 function labelSvg() {
   const mm = labelMetrics();
   if (!mm) return "";
-  return `<text x="${mm.x.toFixed(2)}" y="${mm.baseline.toFixed(2)}" text-anchor="middle"`
+  const text = `<text x="0" y="${mm.dy.toFixed(2)}" text-anchor="middle"`
     + ` font-family="${xmlEsc(labelStack())}" font-size="${mm.px.toFixed(2)}"`
     + ` font-weight="${S.text.bold ? 700 : 400}" fill="${S.text.colour}">`
     + `${xmlEsc(mm.str)}</text>`;
+  /* Rotate about the anchor, exactly as the canvas does — same one number, same
+     transform order, so the exported SVG cannot drift from the stage. */
+  return mm.rot
+    ? `<g transform="translate(${mm.x.toFixed(2)} ${mm.y.toFixed(2)}) rotate(${mm.rot.toFixed(2)})">${text}</g>`
+    : `<g transform="translate(${mm.x.toFixed(2)} ${mm.y.toFixed(2)})">${text}</g>`;
 }
 
 /* ---------------- stage rendering ---------------- */
@@ -684,7 +700,7 @@ function syncLayerUI() {
   ["inset", "iconX", "iconY", "rotation"].forEach((id) => { $(id).disabled = !has; });
 
   const any = S.layers.some((x) => x.icon);
-  ["exportBtn", "pngBtn", "svgBtn"].forEach((id) => { $(id).disabled = !any; });
+  ["exportBtn", "pngBtn", "svgBtn", "svgCopyBtn"].forEach((id) => { $(id).disabled = !any; });
   if (LAUNCH_TARGET) $("lbSave").disabled = !any;
 
   $("selInfo").querySelector(".sel-name").textContent =
@@ -1134,6 +1150,8 @@ function syncLabelUI() {
   $("labelXOut").textContent = Math.round(S.text.x * 100) + "%";
   $("labelY").value = Math.round(S.text.y * 100);
   $("labelYOut").textContent = Math.round(S.text.y * 100) + "%";
+  $("labelRot").value = Math.round(labelRot());
+  $("labelRotOut").textContent = Math.round(labelRot()) + "°";
   $("labelHex").value = S.text.colour.toUpperCase();
   $("labelPick").value = S.text.colour;
 }
@@ -1175,6 +1193,11 @@ $("labelY").addEventListener("input", (e) => {
   $("labelYOut").textContent = Math.round(S.text.y * 100) + "%";
   render(); save();
 });
+$("labelRot").addEventListener("input", (e) => {
+  S.text.rot = Number(e.target.value) || 0;
+  $("labelRotOut").textContent = Math.round(labelRot()) + "°";
+  render(); save();
+});
 $("labelHex").addEventListener("change", (e) => {
   const v = e.target.value.trim();
   setLabelColour(v.startsWith("#") ? v : "#" + v);
@@ -1206,6 +1229,64 @@ $("pngBtn").addEventListener("click", () => {
 $("svgBtn").addEventListener("click", () => {
   const p = primaryIcon();
   download(new Blob([compositeSvg()], { type: "image/svg+xml" }), `${slug(p && p.name)}.svg`);
+});
+
+/* Copy the composite instead of downloading it. The server bakes the label face
+   into the markup first (POST /api/export/svg), so what lands on the clipboard
+   looks the same on a machine that has none of the 40 bundled faces — pasted
+   into an editor, Figma, a chat or a README it still reads right.
+   Plain text is the clipboard type every browser and app agrees on: Chrome on
+   Linux rejects ClipboardItem("image/svg+xml"), so no image flavour is offered.
+   execCommand is the fallback because the tailnet URL (http://100.x…) is not a
+   secure context and has no navigator.clipboard. */
+async function copyText(text) {
+  if (window.isSecureContext && navigator.clipboard && navigator.clipboard.writeText) {
+    try { await navigator.clipboard.writeText(text); return "clipboard"; } catch (e) { /* fall through */ }
+  }
+  const ta = document.createElement("textarea");
+  ta.value = text;
+  ta.setAttribute("readonly", "");
+  ta.style.cssText = "position:fixed;top:-1000px;left:0;opacity:0";
+  document.body.appendChild(ta);
+  ta.select();
+  ta.setSelectionRange(0, text.length);
+  let ok = false;
+  try { ok = document.execCommand("copy"); } catch (e) { ok = false; }
+  ta.remove();
+  if (!ok) throw new Error("clipboard blocked by the browser");
+  return "execCommand";
+}
+
+$("svgCopyBtn").addEventListener("click", async () => {
+  const p = primaryIcon();
+  if (!p) return;
+  const btn = $("svgCopyBtn");
+  const note = $("exportNote");
+  const idle = note.textContent;
+  btn.disabled = true;
+  try {
+    const res = await fetch("/api/export/svg", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        svg: compositeSvg(),
+        font: S.text.font,
+        label: (S.text.value || "").trim(),
+      }),
+    });
+    if (!res.ok) throw new Error(await res.text());
+    const svg = await res.text();
+    await copyText(svg);
+    btn.textContent = "Copied";
+    note.textContent = `svg copied · ${(svg.length / 1024).toFixed(1)} kB`;
+    setTimeout(() => { btn.textContent = "Copy"; }, 1400);
+  } catch (e) {
+    console.error(e);
+    note.textContent = "copy failed: " + e.message;
+    setTimeout(() => { note.textContent = idle; }, 4000);
+  } finally {
+    btn.disabled = false;
+  }
 });
 $("themeSelect").addEventListener("change", (e) => {
   document.documentElement.setAttribute("data-theme", e.target.value);
@@ -1272,6 +1353,7 @@ function applyDesign(raw) {
     S.text.size = Number(t.size) > 0 ? clamp(Number(t.size), 0.04, 1) : TEXT_DEFAULT.size;
     S.text.x = Number.isFinite(Number(t.x)) ? clamp(Number(t.x), 0, 1) : TEXT_DEFAULT.x;
     S.text.y = Number.isFinite(Number(t.y)) ? clamp(Number(t.y), 0, 1) : TEXT_DEFAULT.y;
+    S.text.rot = Number.isFinite(Number(t.rot)) ? clamp(Number(t.rot), 0, 359) : TEXT_DEFAULT.rot;
     S.text.font = FONT_STACKS[t.font] ? t.font : TEXT_DEFAULT.font;
     S.text.bold = t.bold !== false;
     S.text.colour = hexToRgb(t.colour) ? rgbToHex(...hexToRgb(t.colour)) : S.text.colour;

@@ -386,6 +386,15 @@ input[type="color"]::-webkit-color-swatch { border: none; border-radius: 5px; }
 #labelFromIcon { flex: 0 0 auto; }
 .export-row { display: flex; gap: 0.4rem; align-items: center; }
 .export-row .wide { flex: 1; }
+/* Four controls share one row (set / PNG / SVG / copy): a wrapping label would
+   make the pinned row taller and eat the stage, so every label stays on one line
+   and the chips give back padding before the primary has to wrap. */
+.export-row button { white-space: nowrap; }
+@media (max-width: 560px) {
+  .export-row { gap: 0.3rem; }
+  .export-row .chip-btn { padding: 0.5rem 0.45rem; font-size: 0.62rem; }
+  .export-row .wide { padding-inline: 0.5rem; }
+}
 #exportNote { text-align: center; }
 
 /* --- Saved designs --------------------------------------------------------

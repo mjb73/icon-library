@@ -254,6 +254,8 @@
                 <input id="labelY" class="slider" type="range" min="0" max="100" value="50" aria-label="Label vertical position">
               </div>
             </div>
+            <div class="control-head"><label for="labelRot">Rotation</label><span id="labelRotOut" class="mono muted">0°</span></div>
+            <input id="labelRot" class="slider" type="range" min="0" max="359" value="0" aria-label="Label rotation in degrees">
             <div class="row">
               <input id="labelHex" class="hex" type="text" value="#FFFFFF" spellcheck="false" aria-label="Label colour hex">
               <input id="labelPick" type="color" value="#ffffff" aria-label="Label colour picker">
@@ -286,6 +288,7 @@
         <button id="exportBtn" class="primary wide" disabled>Export set</button>
         <button id="pngBtn" class="chip-btn" disabled>PNG</button>
         <button id="svgBtn" class="chip-btn" disabled>SVG</button>
+        <button id="svgCopyBtn" class="chip-btn" disabled title="Copy the SVG to the clipboard">Copy</button>
       </div>
       <p class="hint mono" id="exportNote">zip: 1024→32 px PNGs, 256 px .ico, SVG, licence</p>
     </aside>

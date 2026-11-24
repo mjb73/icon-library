@@ -393,6 +393,26 @@ def slug(text: str) -> str:
     return s or "icon"
 
 
+@app.post("/api/export/svg")
+async def export_svg(payload: dict):
+    """The composite SVG with the label face baked in, as text — the clipboard path.
+
+    Separate from /api/export so copying an icon needs no PNG master and no zip:
+    the page posts what it drew, gets the same self-contained markup the zip
+    would have carried, and puts it on the clipboard.
+    """
+    svg = payload.get("svg") or ""
+    if not isinstance(svg, str) or "<svg" not in svg[:600].lower():
+        raise HTTPException(400, "svg required")
+    if len(svg.encode("utf-8")) > 200_000:
+        raise HTTPException(413, "icon too large")
+    label = payload.get("label") if isinstance(payload.get("label"), str) else ""
+    family, text = svg_label_font(svg)
+    svg = embed_label_font(svg, payload.get("font"), label or text, family=family)
+    return Response(svg, media_type="image/svg+xml",
+                    headers={"Cache-Control": "no-store"})
+
+
 @app.post("/api/export")
 async def export(payload: dict):
     png_b64 = (payload.get("png") or "").split(",")[-1]
@@ -490,6 +510,7 @@ async def export(payload: dict):
                 f"Label:      {lab.get('value', '')!r} · {lab.get('font', '')}"
                 f"{' bold' if lab.get('bold') else ''} · {lab.get('colour', '')}"
                 f" · size {lab.get('size')} · at {lab.get('x')},{lab.get('y')}"
+                f" · {lab.get('rot') or 0} deg"
             )
         z.writestr("LICENSE.txt", "\n".join(lic_lines))
     buf.seek(0)
