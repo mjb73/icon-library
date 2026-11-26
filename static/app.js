@@ -570,7 +570,219 @@ function wheelPick(ev) {
 let wheelDown = false;
 wheel.addEventListener("pointerdown", (e) => { wheelDown = true; wheel.setPointerCapture(e.pointerId); wheelPick(e); });
 wheel.addEventListener("pointermove", (e) => { if (wheelDown) wheelPick(e); });
-wheel.addEventListener("pointerup", () => { wheelDown = false; });
+wheel.addEventListener("pointerup", () => { wheelDown = false; noteRecent(S.bg); });
+
+/* ---------------- recent colours + colour picker ----------------
+
+   Two things the user asked for, in one place: the last five colours they
+   actually settled on (shared by background and icon colour, newest first,
+   persisted) and an in-page picker — saturation/brightness square, hue slider,
+   two-way hex — opened by tapping the swatch next to either hex field. The
+   native OS colour dialog is gone: it speaks RGB, ignores the app's look and
+   cannot show a hue ramp.
+
+   A colour is only filed as "used" when the pick is finished (pointer up,
+   change, picker close), never on every frame of a drag, or the recents would
+   fill with the intermediate colours of one wheel sweep. */
+
+const RECENT_KEY = "iconLibrary.recentColours";
+const RECENT_MAX = 5;
+
+function loadRecent() {
+  try {
+    const raw = JSON.parse(localStorage.getItem(RECENT_KEY) || "[]");
+    if (Array.isArray(raw)) return raw.filter((h) => hexToRgb(h)).slice(0, RECENT_MAX);
+  } catch (e) { /* a broken value must not stop the app booting */ }
+  return [];
+}
+let recentColours = loadRecent();
+
+function paintSwatch(id, hex) {
+  const el = $(id);
+  if (el) el.style.background = hex;
+}
+
+/* Icon colour writes the ACTIVE layer's ink — the same path the hex field and the
+   auto switch take, so a composite can still paint each glyph differently. */
+function setInk(hex) {
+  const rgb = hexToRgb(hex);
+  if (!rgb) return;
+  S.fg = rgbToHex(...rgb);
+  syncFgUI(); paintLayers(); render(); save();
+}
+
+function paintRecent() {
+  for (const [id, target] of [["bgRecent", "bg"], ["fgRecent", "fg"]]) {
+    const row = $(id);
+    if (!row) continue;
+    row.textContent = "";
+    for (const hex of recentColours) {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = "recent-chip";
+      b.dataset.hex = hex.toLowerCase();
+      b.style.background = hex;
+      b.title = hex.toUpperCase();
+      b.setAttribute("aria-label", "Use " + hex.toUpperCase());
+      b.addEventListener("click", () => {
+        if (target === "bg") { applyBg(hex); drawWheel(); }
+        else setInk(hex);
+        noteRecent(hex);
+      });
+      row.appendChild(b);
+    }
+  }
+  markRecent();
+}
+
+/* Which chip is the current value — a two-line class toggle, cheap enough to run
+   from applyBg, which fires on every frame of a wheel drag. */
+function markRecent() {
+  const bg = (S.bg || "").toLowerCase();
+  const ink = (S.fg || "").toLowerCase();
+  document.querySelectorAll("#bgRecent .recent-chip").forEach((c) => {
+    c.classList.toggle("active", c.dataset.hex === bg);
+  });
+  document.querySelectorAll("#fgRecent .recent-chip").forEach((c) => {
+    c.classList.toggle("active", c.dataset.hex === ink);
+  });
+}
+
+function noteRecent(hex) {
+  const rgb = hexToRgb(hex);
+  if (!rgb) return;
+  const norm = rgbToHex(...rgb);
+  if (recentColours.length && recentColours[0].toLowerCase() === norm.toLowerCase()) return;
+  recentColours = [norm, ...recentColours.filter((h) => h.toLowerCase() !== norm.toLowerCase())]
+    .slice(0, RECENT_MAX);
+  try { localStorage.setItem(RECENT_KEY, JSON.stringify(recentColours)); } catch (e) { /* quota */ }
+  paintRecent();
+}
+
+const pickerEl = $("picker");
+const pickSv = $("pickSv");
+const pickCtx = pickSv.getContext("2d");
+const pick = { target: null, h: 200, s: 0.7, v: 0.9, anchor: null };
+
+function pickColour() {
+  const [r, g, b] = hsvToRgb(pick.h, pick.s, pick.v);
+  return rgbToHex(r, g, b);
+}
+
+function paintSv() {
+  const w = pickSv.width, hgt = pickSv.height;
+  const [r, g, b] = hsvToRgb(pick.h, 1, 1);
+  pickCtx.fillStyle = rgbToHex(r, g, b);
+  pickCtx.fillRect(0, 0, w, hgt);
+  const white = pickCtx.createLinearGradient(0, 0, w, 0);
+  white.addColorStop(0, "#fff");
+  white.addColorStop(1, "rgba(255,255,255,0)");
+  pickCtx.fillStyle = white;
+  pickCtx.fillRect(0, 0, w, hgt);
+  const black = pickCtx.createLinearGradient(0, 0, 0, hgt);
+  black.addColorStop(0, "rgba(0,0,0,0)");
+  black.addColorStop(1, "#000");
+  pickCtx.fillStyle = black;
+  pickCtx.fillRect(0, 0, w, hgt);
+  const mx = pick.s * w, my = (1 - pick.v) * hgt;
+  pickCtx.beginPath();
+  pickCtx.arc(mx, my, 7, 0, Math.PI * 2);
+  pickCtx.lineWidth = 3;
+  pickCtx.strokeStyle = "rgba(0,0,0,0.55)";
+  pickCtx.stroke();
+  pickCtx.beginPath();
+  pickCtx.arc(mx, my, 5.5, 0, Math.PI * 2);
+  pickCtx.strokeStyle = "#fff";
+  pickCtx.lineWidth = 1.5;
+  pickCtx.stroke();
+}
+
+function pickApply() {
+  const hex = pickColour();
+  $("pickHex").value = hex.toUpperCase();
+  $("pickPreview").style.background = hex;
+  if (pick.target === "bg") { applyBg(hex); drawWheel(); }
+  else if (pick.target === "fg") setInk(hex);
+}
+
+function openPicker(target, anchor) {
+  const cur = hexToRgb(target === "bg" ? S.bg : S.fg) || [30, 111, 140];
+  const [h, s, v] = rgbToHsv(...cur);
+  pick.target = target;
+  pick.anchor = anchor;
+  pick.h = h; pick.s = s; pick.v = v;
+  $("pickHue").value = Math.round(h);
+  $("pickHex").value = rgbToHex(...cur).toUpperCase();
+  $("pickPreview").style.background = rgbToHex(...cur);
+  paintSv();
+  pickerEl.classList.remove("hidden");   // measure after it is laid out
+  const r = anchor.getBoundingClientRect();
+  const pw = pickerEl.offsetWidth, ph = pickerEl.offsetHeight;
+  let left = Math.min(r.right - pw, window.innerWidth - pw - 8);
+  left = Math.max(8, left);
+  let top = r.bottom + 8;
+  if (top + ph > window.innerHeight - 8) top = Math.max(8, r.top - ph - 8);
+  pickerEl.style.left = left + "px";
+  pickerEl.style.top = top + "px";
+  anchor.setAttribute("aria-expanded", "true");
+}
+
+function closePicker() {
+  if (!pickerEl || pickerEl.classList.contains("hidden")) return;
+  pickerEl.classList.add("hidden");
+  if (pick.anchor) pick.anchor.setAttribute("aria-expanded", "false");
+  if (pick.target) noteRecent(pickColour());
+  pick.anchor = null;
+  pick.target = null;
+}
+
+function svPick(ev) {
+  const rect = pickSv.getBoundingClientRect();
+  pick.s = clamp((ev.clientX - rect.left) / rect.width, 0, 1);
+  pick.v = 1 - clamp((ev.clientY - rect.top) / rect.height, 0, 1);
+  pickApply();
+  paintSv();
+}
+
+let svDown = false;
+pickSv.addEventListener("pointerdown", (e) => {
+  svDown = true;
+  pickSv.setPointerCapture(e.pointerId);
+  svPick(e);
+});
+pickSv.addEventListener("pointermove", (e) => { if (svDown) svPick(e); });
+pickSv.addEventListener("pointerup", () => { svDown = false; noteRecent(pickColour()); });
+
+$("pickHue").addEventListener("input", (e) => {
+  pick.h = Number(e.target.value);
+  pickApply();
+  paintSv();
+});
+$("pickHue").addEventListener("change", () => noteRecent(pickColour()));
+$("pickHex").addEventListener("change", (e) => {
+  const rgb = hexToRgb(e.target.value.trim());
+  if (!rgb) { e.target.value = pickColour().toUpperCase(); return; }
+  const [h, s, v] = rgbToHsv(...rgb);
+  pick.h = h; pick.s = s; pick.v = v;
+  $("pickHue").value = Math.round(h);
+  pickApply();
+  paintSv();
+  noteRecent(rgbToHex(...rgb));
+});
+$("pickDone").addEventListener("click", closePicker);
+$("bgSwatch").addEventListener("click", (e) => openPicker("bg", e.currentTarget));
+$("fgSwatch").addEventListener("click", (e) => openPicker("fg", e.currentTarget));
+document.addEventListener("pointerdown", (e) => {
+  if (pickerEl.classList.contains("hidden")) return;
+  if (pickerEl.contains(e.target)) return;
+  if (pick.anchor && pick.anchor.contains(e.target)) return;
+  closePicker();
+});
+document.addEventListener("keydown", (e) => { if (e.key === "Escape") closePicker(); });
+// position:fixed would otherwise stay put while the tab panel scrolls under it
+window.addEventListener("scroll", closePicker, true);
+window.addEventListener("resize", closePicker);
+paintRecent();
 
 /* ---------------- state -> UI ---------------- */
 function applyBg(hex, syncHsv = true) {
@@ -583,7 +795,8 @@ function applyBg(hex, syncHsv = true) {
     $("val").value = Math.round(v * 100);
   }
   $("hex").value = S.bg.toUpperCase();
-  $("bgPick").value = S.bg;
+  paintSwatch("bgSwatch", S.bg);
+  markRecent();
   syncFgUI();       // auto ink is resolved from the background, so re-read it
   syncPresetActive();
   render();
@@ -595,7 +808,8 @@ function applyBg(hex, syncHsv = true) {
    ink, so switching layer chips re-reads it. */
 function syncFgUI() {
   $("fgHex").value = S.fg.toUpperCase();
-  $("fgPick").value = S.fg;
+  paintSwatch("fgSwatch", S.fg);
+  markRecent();
   $("autoFg").checked = S.autoFg;
   const which = $("fgLayer");
   if (which) {
@@ -618,6 +832,7 @@ function updateFgNote() {
 function syncBgControls() {
   $("colourPanel").classList.toggle("dim", S.transparent);
   $("shapeControl").classList.toggle("dim", S.transparent);
+  $("bgRecent").classList.toggle("dim", S.transparent); // a recent chip must not look live under `transparent`
 }
 
 function selectIcon(r, tileEl) {
@@ -872,8 +1087,8 @@ $("hex").addEventListener("change", (e) => {
   const v = e.target.value.trim();
   applyBg(v.startsWith("#") ? v : "#" + v);
   drawWheel();
+  noteRecent(S.bg);
 });
-$("bgPick").addEventListener("input", (e) => { applyBg(e.target.value); drawWheel(); });
 $("val").addEventListener("input", (e) => {
   S.val = Number(e.target.value) / 100;
   const [r, g, b] = hsvToRgb(S.hue, S.sat, S.val);
@@ -887,16 +1102,12 @@ $("autoFg").addEventListener("change", (e) => {
   S.autoFg = e.target.checked;
   syncFgUI(); paintLayers(); render(); save();
 });
-$("fgPick").addEventListener("input", (e) => {
-  S.fg = e.target.value;
-  syncFgUI(); paintLayers(); render(); save();
-});
 $("fgHex").addEventListener("change", (e) => {
   const v = e.target.value.trim();
   const rgb = hexToRgb(v.startsWith("#") ? v : "#" + v);
   if (!rgb) { $("fgHex").value = S.fg.toUpperCase(); return; }
-  S.fg = rgbToHex(...rgb);
-  syncFgUI(); paintLayers(); render(); save();
+  setInk(rgbToHex(...rgb));
+  noteRecent(S.fg);
 });
 $("fgAll").addEventListener("click", () => {
   const ink = S.fg;
@@ -1749,7 +1960,7 @@ function buildPresetRow(presets) {
     b.style.borderRadius = "50%";
     b.title = preset.name + " — " + preset.hex.toUpperCase();
     b.setAttribute("aria-label", "Background " + preset.name + " " + preset.hex);
-    b.addEventListener("click", () => applyBg(preset.hex));
+    b.addEventListener("click", () => { applyBg(preset.hex); noteRecent(preset.hex); });
     row.appendChild(b);
   });
   row.classList.remove("hidden");

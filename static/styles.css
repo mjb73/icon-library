@@ -300,6 +300,49 @@ input[type="color"] {
 input[type="color"]::-webkit-color-swatch-wrapper { padding: 3px; }
 input[type="color"]::-webkit-color-swatch { border: none; border-radius: 5px; }
 
+/* Current-colour button that opens the picker (replaces the native colour input,
+   whose OS popup speaks RGB and looks nothing like the rest of the app). */
+.swatch-btn {
+  width: 44px; height: 34px; padding: 0; border-radius: 8px; cursor: pointer;
+  border: 1px solid var(--border); background: var(--bg-input);
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.12);
+}
+.swatch-btn:hover { border-color: var(--accent); }
+.swatch-btn:focus-visible { outline: 2px solid var(--border-focus); outline-offset: 2px; }
+
+/* Last five colours used, newest first — shared by background and icon colour. */
+.recent-row { display: flex; gap: 0.35rem; flex-wrap: wrap; }
+.recent-row:empty { display: none; }
+.recent-chip {
+  width: 24px; height: 24px; padding: 0; border-radius: 7px; cursor: pointer;
+  border: 1px solid var(--border); box-shadow: inset 0 0 0 1px rgba(255,255,255,0.10);
+  transition: transform 0.12s ease, border-color 0.12s ease;
+}
+.recent-chip:hover { transform: translateY(-1px); border-color: var(--accent); }
+.recent-chip.active { box-shadow: 0 0 0 2px var(--accent); }
+
+.picker {
+  position: fixed; z-index: 60; width: 264px; padding: 0.6rem;
+  display: flex; flex-direction: column; gap: 0.5rem;
+  background: var(--bg-1); border: 1px solid var(--border); border-radius: 12px;
+  box-shadow: 0 18px 40px -12px rgba(0,0,0,0.75);
+}
+.picker.hidden { display: none; }
+#pickSv { display: block; width: 100%; height: 140px; border-radius: 8px; cursor: crosshair; touch-action: none; }
+.hue-slider { height: 20px; }
+.hue-slider::-webkit-slider-runnable-track {
+  height: 6px; border-radius: 3px;
+  background: linear-gradient(90deg, #f00, #ff0, #0f0, #0ff, #00f, #f0f, #f00);
+}
+.hue-slider::-moz-range-track {
+  height: 6px; border-radius: 3px;
+  background: linear-gradient(90deg, #f00, #ff0, #0f0, #0ff, #00f, #f0f, #f00);
+}
+.picker-preview {
+  width: 34px; height: 30px; border-radius: 8px; border: 1px solid var(--border);
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.10);
+}
+
 .slider { -webkit-appearance: none; appearance: none; width: 100%; height: 22px; background: transparent; }
 .slider::-webkit-slider-runnable-track { height: 5px; border-radius: 3px; background: var(--border); }
 .slider::-webkit-slider-thumb {
@@ -394,6 +437,10 @@ input[type="color"]::-webkit-color-swatch { border: none; border-radius: 5px; }
   .export-row { gap: 0.3rem; }
   .export-row .chip-btn { padding: 0.5rem 0.45rem; font-size: 0.62rem; }
   .export-row .wide { padding-inline: 0.5rem; }
+  /* recents are a tap target on a phone, not a 24 px desktop chip */
+  .recent-row { gap: 0.45rem; }
+  .recent-chip { width: 30px; height: 30px; border-radius: 8px; }
+  .swatch-btn { width: 46px; height: 36px; }
 }
 #exportNote { text-align: center; }
 

@@ -121,10 +121,12 @@
             </div>
             <div class="row">
               <input id="fgHex" class="hex" type="text" value="#FFFFFF" spellcheck="false" aria-label="Icon colour hex">
-              <input id="fgPick" type="color" value="#ffffff" aria-label="Icon colour picker">
+              <button id="fgSwatch" class="swatch-btn" type="button"
+                      aria-label="Icon colour picker" title="Colour picker"></button>
               <button id="fgAll" class="chip-btn hidden" type="button"
                       title="Paint every glyph with this colour">all layers</button>
             </div>
+            <div class="recent-row" id="fgRecent" role="group" aria-label="Recent icon colours"></div>
           </div>
 
           <div class="control">
@@ -148,12 +150,14 @@
               <div class="colour-side">
                 <div class="row">
                   <input id="hex" class="hex" type="text" value="#1e6f8c" spellcheck="false" aria-label="Hex colour">
-                  <input id="bgPick" type="color" value="#1e6f8c" aria-label="Background picker">
+                  <button id="bgSwatch" class="swatch-btn" type="button"
+                          aria-label="Background colour picker" title="Colour picker"></button>
                 </div>
                 <span class="tiny mono muted">brightness</span>
                 <input id="val" class="slider" type="range" min="6" max="100" value="90" aria-label="Brightness">
               </div>
             </div>
+            <div class="recent-row" id="bgRecent" role="group" aria-label="Recent background colours"></div>
           </div>
 
           <div class="control" id="shapeControl">
@@ -293,6 +297,18 @@
       <p class="hint mono" id="exportNote">zip: 1024→32 px PNGs, 256 px .ico, SVG, licence</p>
     </aside>
   </main>
+
+  <!-- One picker for both colours. Fixed-position so the composer's overflow:hidden
+       and sticky cap cannot clip it; the recents row lives under each control. -->
+  <div id="picker" class="picker hidden" role="dialog" aria-label="Colour picker">
+    <canvas id="pickSv" width="232" height="140" aria-label="Saturation and brightness"></canvas>
+    <input id="pickHue" class="slider hue-slider" type="range" min="0" max="359" value="200" aria-label="Hue">
+    <div class="row">
+      <span class="picker-preview" id="pickPreview" aria-hidden="true"></span>
+      <input id="pickHex" class="hex" type="text" spellcheck="false" aria-label="Colour hex">
+      <button id="pickDone" class="chip-btn" type="button">done</button>
+    </div>
+  </div>
 
   <script src="/static/app.js?v={{asset_v}}"></script>
 </body>
