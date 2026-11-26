@@ -1231,14 +1231,22 @@ $("svgBtn").addEventListener("click", () => {
   download(new Blob([compositeSvg()], { type: "image/svg+xml" }), `${slug(p && p.name)}.svg`);
 });
 
-/* Copy the composite instead of downloading it. The server bakes the label face
-   into the markup first (POST /api/export/svg), so what lands on the clipboard
-   looks the same on a machine that has none of the 40 bundled faces — pasted
-   into an editor, Figma, a chat or a README it still reads right.
-   Plain text is the clipboard type every browser and app agrees on: Chrome on
-   Linux rejects ClipboardItem("image/svg+xml"), so no image flavour is offered.
-   execCommand is the fallback because the tailnet URL (http://100.x…) is not a
-   secure context and has no navigator.clipboard. */
+/* Copy the finished icon to the clipboard as a real image, not as markup.
+   The complaint this fixes: the button used to put only SVG *source* on the
+   clipboard, so pasting into a doc, a chat or an image editor gave you the
+   parameters instead of the picture. Now one clipboard entry carries two
+   flavours: image/png (1024 px, straight off the stage canvas — what every
+   paste target honours) and text/plain (the server-baked SVG markup, for an
+   editor that wants the vector source).
+   image/png is a sanitized flavour Chrome on Linux accepts; image/svg+xml is
+   rejected there. execCommand remains the last-resort fallback because the
+   tailnet URL (http://100.x…) is not a secure context and has no
+   navigator.clipboard. */
+function stagePng() {
+  return new Promise((res, rej) => stage.toBlob(
+    (b) => (b ? res(b) : rej(new Error("could not rasterise the icon"))), "image/png"));
+}
+
 async function copyText(text) {
   if (window.isSecureContext && navigator.clipboard && navigator.clipboard.writeText) {
     try { await navigator.clipboard.writeText(text); return "clipboard"; } catch (e) { /* fall through */ }
@@ -1257,6 +1265,50 @@ async function copyText(text) {
   return "execCommand";
 }
 
+/* An http:// origin (the tailnet URL the launcher cards link to, e.g.
+   http://100.x…:7876) is not a secure context, so navigator.clipboard does not
+   exist there and *no browser API can put a bitmap on the clipboard* —
+   execCommand only ever yields text. Verified on Wayland Chromium: HTTPS origin
+   → clipboard types text/plain, text/html, image/png; the same page over http
+   → text/plain only, even when copying a selected <img>. So the honest split is:
+   secure context = image; plain http = tell the user why, once, instead of
+   silently handing back markup. */
+function insecureHint() {
+  const port = location.port ? ":" + location.port : "";
+  return `copy: an http:// origin can't put images on the clipboard — `
+    + `open http://127.0.0.1${port}/ (or an https:// URL) instead`;
+}
+
+async function copyIcon(pngBlob, svgText) {
+  const canWrite = window.isSecureContext && navigator.clipboard
+    && navigator.clipboard.write && window.ClipboardItem;
+  if (canWrite) {
+    // A third flavour for rich-text targets (Word, Docs, Obsidian, chat): they
+    // prefer text/html over text/plain, so without it they paste the SVG source
+    // — the exact complaint this fixes. The <img> is the same PNG as data URI.
+    const html = await new Promise((res) => {
+      const fr = new FileReader();
+      fr.onload = () => res(`<img src="${fr.result}" width="1024" height="1024" alt="icon">`);
+      fr.onerror = () => res("");
+      fr.readAsDataURL(pngBlob);
+    });
+    const tries = [{ "image/png": pngBlob }];
+    if (svgText) {
+      tries.unshift(html
+        ? { "image/png": pngBlob, "text/html": new Blob([html], { type: "text/html" }),
+            "text/plain": new Blob([svgText], { type: "text/plain" }) }
+        : { "image/png": pngBlob, "text/plain": new Blob([svgText], { type: "text/plain" }) });
+    }
+    for (const flavours of tries) {
+      try { await navigator.clipboard.write([new ClipboardItem(flavours)]); return "image"; }
+      catch (e) { console.warn("clipboard image write failed", e); }
+    }
+  }
+  if (!svgText) throw new Error("clipboard needs a secure context to take images");
+  await copyText(svgText);
+  return "text";
+}
+
 $("svgCopyBtn").addEventListener("click", async () => {
   const p = primaryIcon();
   if (!p) return;
@@ -1265,20 +1317,29 @@ $("svgCopyBtn").addEventListener("click", async () => {
   const idle = note.textContent;
   btn.disabled = true;
   try {
-    const res = await fetch("/api/export/svg", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        svg: compositeSvg(),
-        font: S.text.font,
-        label: (S.text.value || "").trim(),
-      }),
-    });
-    if (!res.ok) throw new Error(await res.text());
-    const svg = await res.text();
-    await copyText(svg);
+    await render(); // the stage must show exactly what S says before we read it
+    const png = await stagePng();
+    let svg = "";
+    try {
+      const res = await fetch("/api/export/svg", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          svg: compositeSvg(),
+          font: S.text.font,
+          label: (S.text.value || "").trim(),
+        }),
+      });
+      if (res.ok) svg = await res.text();
+    } catch (e) { console.warn("svg flavour unavailable", e); }
+    const how = await copyIcon(png, svg);
     btn.textContent = "Copied";
-    note.textContent = `svg copied · ${(svg.length / 1024).toFixed(1)} kB`;
+    if (how === "image") {
+      note.textContent = `icon copied · 1024 px png${svg ? " + svg text" : ""}`;
+    } else {
+      note.textContent = insecureHint();
+      setTimeout(() => { note.textContent = idle; }, 6000);
+    }
     setTimeout(() => { btn.textContent = "Copy"; }, 1400);
   } catch (e) {
     console.error(e);
@@ -1288,6 +1349,7 @@ $("svgCopyBtn").addEventListener("click", async () => {
     btn.disabled = false;
   }
 });
+
 $("themeSelect").addEventListener("change", (e) => {
   document.documentElement.setAttribute("data-theme", e.target.value);
   localStorage.setItem("iconLibrary.theme", e.target.value);
