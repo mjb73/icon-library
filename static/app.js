@@ -772,6 +772,40 @@ $("pickHex").addEventListener("change", (e) => {
 $("pickDone").addEventListener("click", closePicker);
 $("bgSwatch").addEventListener("click", (e) => openPicker("bg", e.currentTarget));
 $("fgSwatch").addEventListener("click", (e) => openPicker("fg", e.currentTarget));
+
+/* Screen-wide eyedropper. window.EyeDropper hands the pick to the OS: the
+   compositor shows its own magnifier and returns one pixel from ANYWHERE on the
+   desktop, other windows and other monitors included. Nothing drawn inside this
+   page could do that — a canvas read or a page overlay only ever samples this
+   window, which is the behaviour it is meant to replace. Chromium-only and a
+   secure context is required, so an unavailable button says why instead of
+   failing silently on click. */
+const hasEyeDropper = typeof window.EyeDropper === "function";
+
+async function screenPick(target, btn) {
+  if (!hasEyeDropper) return;
+  try {
+    const { sRGBHex } = await new window.EyeDropper().open();
+    if (target === "bg") { applyBg(sRGBHex); drawWheel(); }
+    else setInk(sRGBHex);
+    noteRecent(sRGBHex);
+    // keep an open popover in step with what was just sampled
+    if (!pickerEl.classList.contains("hidden")) openPicker(target, pick.anchor || btn);
+  } catch (e) { /* AbortError: the pick was cancelled, leave the colour alone */ }
+}
+
+$("bgPipette").addEventListener("click", (e) => screenPick("bg", e.currentTarget));
+$("fgPipette").addEventListener("click", (e) => screenPick("fg", e.currentTarget));
+if (!hasEyeDropper) {
+  for (const id of ["bgPipette", "fgPipette"]) {
+    const b = $(id);
+    if (!b) continue;
+    b.disabled = true;
+    b.title = window.isSecureContext
+      ? "Screen picker needs Chrome, Edge or Brave"
+      : "Screen picker needs an https:// or 127.0.0.1 page";
+  }
+}
 document.addEventListener("pointerdown", (e) => {
   if (pickerEl.classList.contains("hidden")) return;
   if (pickerEl.contains(e.target)) return;

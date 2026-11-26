@@ -168,6 +168,20 @@ A browser only allows an image on the clipboard from a **secure context**:
 address no browser API can write a bitmap, so the button copies the SVG markup
 instead and says why in the export note.
 
+## Colour picker
+
+Each colour control has three parts: the hex field, a swatch showing the current
+colour, and a pipette button. The swatch opens an in-page picker (saturation and
+brightness square, hue slider, two-way hex); the pipette hands the pick to the
+browser's `EyeDropper`, so a colour can be sampled **anywhere on the desktop** —
+another window, another monitor, a photo — not just inside this page. Chromium-only
+(Chrome, Edge, Brave) and on a secure origin; the button disables itself with a
+tooltip where it is unavailable.
+
+The last five colours you used are kept as chips under both controls (shared by
+background and icon colour, newest first, persisted in the browser), and a colour
+is filed only when a pick finishes, not on every frame of a drag.
+
 ## Sizing
 
 200 × 200 is not a platform size — it is a comfortable preview tile, and the stage shows
