@@ -974,7 +974,14 @@ function paintLayers() {
   const n = S.layers.length;
   const filled = S.layers.filter((l) => l.icon).length;
   $("layerNote").textContent = filled + "/" + n + " filled";
-  $("layerRemove").disabled = n <= 1;
+  /* One layer has no row to drop, so the button clears its glyph instead; it is
+     only dead when there is nothing left to remove. */
+  const last = S.layers[0];
+  $("layerRemove").disabled = n <= 1 && !(last && last.icon);
+  $("layerRemove").textContent = n > 1 ? "Remove" : "Clear";
+  $("layerRemove").title = n > 1
+    ? "Remove this layer"
+    : "Clear the icon from the stage";
 }
 
 function syncLayerUI() {
@@ -1016,10 +1023,20 @@ function addLayer() {
   save();
 }
 
+/* Remove the active glyph. With several layers that drops the row; with one layer
+   there is no row to drop, so it clears the glyph instead — the button used to be
+   disabled there, which left no way at all to unset a single icon. */
 function removeLayer() {
-  if (S.layers.length <= 1) return;
-  S.layers.splice(S.active, 1);
-  S.active = clamp(S.active, 0, S.layers.length - 1);
+  if (S.layers.length > 1) {
+    S.layers.splice(S.active, 1);
+    S.active = clamp(S.active, 0, S.layers.length - 1);
+  } else {
+    const l = S.layers[0];
+    if (!l || !l.icon) return;
+    l.icon = null;
+    l.src = null;
+  }
+  S.lastSrc = null;
   syncLayerUI();
   render();
   save();
