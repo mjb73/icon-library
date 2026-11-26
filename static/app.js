@@ -32,10 +32,14 @@ const S = {
      so compositeSvg() rebuilds exactly the geometry the canvas drew. */
   layers: [],
   active: 0,
-  /* Label: numbers/letters drawn over the glyphs. An empty `value` means no
-     label — the text box is the on/off, so nothing else can drift from it.
-     size/x/y are fractions of the 1024 canvas. */
-  text: { ...TEXT_DEFAULT },
+  /* Labels: numbers/letters drawn over the glyphs, painted in array order (last
+     one on top). Each is {value, size, x, y, rot, font, bold, colour}. An empty
+     `value` draws nothing — the text box is that label's on/off, so nothing else
+     can drift from it. `text` is an accessor onto the ACTIVE label (see
+     Object.defineProperties below), so every control and export path that means
+     "the label I am editing" works unchanged with several labels on the stage. */
+  labels: [{ ...TEXT_DEFAULT }],
+  activeLabel: 0,
   /* The record in the saved-design library this stage is filed under. Empty
      until the first autosave after a glyph is picked. */
   designId: null,
@@ -105,6 +109,29 @@ Object.defineProperties(S, {
       // on: hand the colour back to the background read-out. off: freeze what
       // is on screen so the next background change does not repaint it.
       activeLayer().ink = on ? null : layerInk(activeLayer());
+    },
+  },
+  /* The label being edited. Get never returns undefined (that would make every
+     control read a phantom label), and set replaces the whole active label so
+     `S.text = {...TEXT_DEFAULT}` still means "reset this label". */
+  text: {
+    get: () => {
+      if (!Array.isArray(S.labels) || !S.labels.length) {
+        S.labels = [{ ...TEXT_DEFAULT }];
+        S.activeLabel = 0;
+      }
+      if (!S.labels[S.activeLabel]) S.activeLabel = 0;
+      return S.labels[S.activeLabel];
+    },
+    set: (v) => {
+      const next = Object.assign({ ...TEXT_DEFAULT }, v || {});
+      if (!Array.isArray(S.labels) || !S.labels.length) {
+        S.labels = [next];
+        S.activeLabel = 0;
+      } else {
+        if (!S.labels[S.activeLabel]) S.activeLabel = 0;
+        S.labels[S.activeLabel] = next;
+      }
     },
   },
 });
@@ -277,26 +304,29 @@ const FONT_STACKS = {
   "silkscreen": '"Silkscreen", "DejaVu Sans Mono", monospace',
 };
 
-const labelStack = () => FONT_STACKS[S.text.font] || FONT_STACKS["dejavu-sans"];
+const labelStack = (t = S.text) => FONT_STACKS[t.font] || FONT_STACKS["dejavu-sans"];
 const FONT_FAMILY = Object.fromEntries(
   Object.entries(FONT_STACKS).map(([id, stack]) => [id, stack.split(",")[0].trim().replace(/^"|"$/g, "")])
 );
-const labelPx = () => 1024 * S.text.size;
-const labelFontCSS = () => `${S.text.bold ? "bold " : ""}${labelPx()}px ${labelStack()}`;
+const labelPx = (t = S.text) => 1024 * t.size;
+const labelFontCSS = (t = S.text) => `${t.bold ? "bold " : ""}${labelPx(t)}px ${labelStack(t)}`;
+
+/* Every label that actually draws something, in paint order. */
+const visibleLabels = () => (S.labels || []).filter((t) => String(t && t.value || "").trim());
 
 /* Every family is served by /static/fonts/label/label.css, so the same face
    renders — and measures identically — on Linux, macOS and Windows, with no
    system font install. Canvas silently uses a fallback if the face is still
    loading, which would shift the text and the export, so renders wait here. */
 const fontLoads = new Map();
-function ensureFontLoaded(id = S.text.font) {
+function ensureFontLoaded(id = S.text.font, sample = S.text.value) {
   if (!document.fonts || !document.fonts.load) return Promise.resolve();
   const fam = FONT_FAMILY[id] || FONT_FAMILY["dejavu-sans"];
-  const sample = S.text.value || "AaBbCc0123";
+  const text = sample || "AaBbCc0123";
   if (!fontLoads.has(id)) {
     fontLoads.set(id, Promise.all([
-      document.fonts.load(`400 64px "${fam}"`, sample),
-      document.fonts.load(`700 64px "${fam}"`, sample),
+      document.fonts.load(`400 64px "${fam}"`, text),
+      document.fonts.load(`700 64px "${fam}"`, text),
     ]).catch(() => {}));
   }
   return fontLoads.get(id);
@@ -310,56 +340,65 @@ let measureCtx = null;
    then anchor on the baseline, which is the one number Pango and Chrome agree on.
    `rot` turns the text about the anchor point (its own ink centre), so a 90° label
    runs up the middle of the frame instead of sliding off it. */
-function labelMetrics() {
-  const str = String(S.text.value || "").trim();
+function labelMetrics(t = S.text) {
+  const str = String(t.value || "").trim();
   if (!str) return null;
   if (!measureCtx) measureCtx = document.createElement("canvas").getContext("2d");
-  measureCtx.font = labelFontCSS();
+  measureCtx.font = labelFontCSS(t);
   const m = measureCtx.measureText(str) || {};
-  const asc = Number.isFinite(m.actualBoundingBoxAscent) ? m.actualBoundingBoxAscent : labelPx() * 0.72;
-  const desc = Number.isFinite(m.actualBoundingBoxDescent) ? m.actualBoundingBoxDescent : labelPx() * 0.2;
-  const x = S.text.x * 1024;
-  const y = S.text.y * 1024;
+  const asc = Number.isFinite(m.actualBoundingBoxAscent) ? m.actualBoundingBoxAscent : labelPx(t) * 0.72;
+  const desc = Number.isFinite(m.actualBoundingBoxDescent) ? m.actualBoundingBoxDescent : labelPx(t) * 0.2;
+  const x = t.x * 1024;
+  const y = t.y * 1024;
   /* Baseline offset from the anchor: positive = down, so the ink box straddles y. */
   const dy = (asc - desc) / 2;
-  return { str, x, y, dy, baseline: y + dy, rot: labelRot(), px: labelPx(), width: m.width || 0, asc, desc };
+  return { str, x, y, dy, baseline: y + dy, rot: labelRot(t), px: labelPx(t), width: m.width || 0, asc, desc };
 }
 
-const labelRot = () => {
-  const r = Number(S.text.rot);
+const labelRot = (t = S.text) => {
+  const r = Number(t.rot);
   return Number.isFinite(r) ? ((r % 360) + 360) % 360 : 0;
 };
 
-function drawLabel(g) {
-  const mm = labelMetrics();
+function drawLabel(g, t = S.text) {
+  const mm = labelMetrics(t);
   if (!mm) return;
   g.save();
   g.translate(mm.x, mm.y);
   if (mm.rot) g.rotate((mm.rot * Math.PI) / 180);
-  g.font = labelFontCSS();
+  g.font = labelFontCSS(t);
   g.textAlign = "center";
   g.textBaseline = "alphabetic";
-  g.fillStyle = S.text.colour;
+  g.fillStyle = t.colour;
   g.fillText(mm.str, 0, mm.dy);
   g.restore();
+}
+
+/* Every label, back to front — same order as the SVG, so the two cannot drift. */
+function drawLabels(g) {
+  (S.labels || []).forEach((t) => drawLabel(g, t));
 }
 
 const xmlEsc = (s) => String(s)
   .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
   .replace(/"/g, "&quot;");
 
-function labelSvg() {
-  const mm = labelMetrics();
+function labelSvgOne(t) {
+  const mm = labelMetrics(t);
   if (!mm) return "";
   const text = `<text x="0" y="${mm.dy.toFixed(2)}" text-anchor="middle"`
-    + ` font-family="${xmlEsc(labelStack())}" font-size="${mm.px.toFixed(2)}"`
-    + ` font-weight="${S.text.bold ? 700 : 400}" fill="${S.text.colour}">`
+    + ` font-family="${xmlEsc(labelStack(t))}" font-size="${mm.px.toFixed(2)}"`
+    + ` font-weight="${t.bold ? 700 : 400}" fill="${t.colour}">`
     + `${xmlEsc(mm.str)}</text>`;
   /* Rotate about the anchor, exactly as the canvas does — same one number, same
      transform order, so the exported SVG cannot drift from the stage. */
   return mm.rot
     ? `<g transform="translate(${mm.x.toFixed(2)} ${mm.y.toFixed(2)}) rotate(${mm.rot.toFixed(2)})">${text}</g>`
     : `<g transform="translate(${mm.x.toFixed(2)} ${mm.y.toFixed(2)})">${text}</g>`;
+}
+
+function labelSvg() {
+  return (S.labels || []).map(labelSvgOne).filter(Boolean).join("\n");
 }
 
 /* ---------------- stage rendering ---------------- */
@@ -479,9 +518,11 @@ async function render() {
   if (seq !== renderSeq) return;
   const act = activeLayer();
   S.lastSrc = act ? act.src : null;
-  await ensureFontLoaded();
+  /* Wait for every face a label uses, not just the active one — a second label in
+     another family would otherwise be measured through a fallback on first paint. */
+  await Promise.all(visibleLabels().map((t) => ensureFontLoaded(t.font, t.value)));
   if (seq !== renderSeq) return;
-  drawLabel(ctx); // label sits on top, unrotated: it is a separate layer
+  drawLabels(ctx); // labels sit on top, unrotated: they are separate layers
 }
 
 /* ---------------- composite SVG ----------------
@@ -1082,6 +1123,7 @@ async function exportSet() {
       bg: S.transparent ? null : S.bg, fg: S.fg, grayscale: S.gray, shape: S.shape,
       transparent: S.transparent, inset: S.inset, rotation: S.rotation, remote: !!primary.remote,
       label: (S.text.value || "").trim() ? { ...S.text } : null,
+      labels: visibleLabels().map((t) => ({ ...t })),
       layers: S.layers.filter((l) => l.icon).map((l) => ({
         icon: l.icon.id, name: l.icon.name, collection: l.icon.collection,
         license: l.icon.spdx, license_url: l.icon.license_url || "",
@@ -1383,7 +1425,61 @@ buildFontPicker();
 /* ---------------- label wiring ----------------
    One writer per field: the text box, select, switches, sliders and the colour
    pair all funnel through syncLabelUI(), so canvas, read-outs and the saved
-   design cannot drift apart. */
+   design cannot drift apart. Each label keeps its own font/size/position/colour;
+   the strip chooses which one those controls edit. */
+function labelName(t, i) {
+  const v = String((t && t.value) || "").trim();
+  return v ? `“${v}”` : `label ${i + 1} — type to fill it`;
+}
+
+function paintLabels() {
+  const strip = $("labelStrip");
+  if (!strip) return;
+  strip.textContent = "";
+  const list = S.labels || [];
+  list.forEach((t, i) => {
+    const chip = document.createElement("button");
+    chip.type = "button";
+    const filled = !!String(t.value || "").trim();
+    chip.className = "label-chip" + (i === S.activeLabel ? " active" : "") + (filled ? "" : " empty");
+    chip.title = labelName(t, i) + " · " + (t.colour || "").toUpperCase();
+    chip.setAttribute("aria-label", "Label " + (i + 1) + ": " + labelName(t, i));
+    if (filled) {
+      /* The chip previews the label in its own colour and face, so three labels
+         are distinguishable in the strip without opening the colour row. */
+      chip.textContent = String(t.value).trim().slice(0, 3);
+      chip.style.color = t.colour;
+      chip.style.fontFamily = labelStack(t);
+    } else {
+      chip.innerHTML = `<span class="layer-plus">+</span>`;
+    }
+    chip.addEventListener("click", () => {
+      S.activeLabel = i;
+      syncLabelUI();
+    });
+    strip.appendChild(chip);
+  });
+  const n = list.length;
+  const filled = list.filter((t) => String(t.value || "").trim()).length;
+  if ($("labelNote")) $("labelNote").textContent = filled + " of " + n + (n === 1 ? " label" : " labels");
+  if ($("labelRemove")) $("labelRemove").disabled = n <= 1;
+}
+
+function addLabel() {
+  S.labels.push({ ...TEXT_DEFAULT, colour: S.text.colour });
+  S.activeLabel = S.labels.length - 1;
+  syncLabelUI();
+  const box = $("labelText");
+  if (box) box.focus();
+}
+
+function removeLabel() {
+  if ((S.labels || []).length <= 1) return;
+  S.labels.splice(S.activeLabel, 1);
+  S.activeLabel = Math.max(0, Math.min(S.activeLabel, S.labels.length - 1));
+  syncLabelUI();
+}
+
 function syncLabelUI() {
   $("labelText").value = S.text.value;
   $("labelFont").value = S.text.font;
@@ -1399,6 +1495,7 @@ function syncLabelUI() {
   $("labelRotOut").textContent = Math.round(labelRot()) + "°";
   $("labelHex").value = S.text.colour.toUpperCase();
   $("labelPick").value = S.text.colour;
+  paintLabels();
 }
 
 function setLabelColour(hex) {
@@ -1411,13 +1508,17 @@ function setLabelColour(hex) {
 
 $("labelText").addEventListener("input", (e) => {
   S.text.value = e.target.value;
+  paintLabels();
   render(); save();
 });
 $("labelFont").addEventListener("change", (e) => {
   S.text.font = e.target.value;
   syncFontPicker();
+  paintLabels();
   render(); save();
 });
+$("labelAdd").addEventListener("click", addLabel);
+$("labelRemove").addEventListener("click", removeLabel);
 $("labelBold").addEventListener("change", (e) => {
   S.text.bold = e.target.checked;
   syncFontPicker();
@@ -1577,6 +1678,9 @@ $("svgCopyBtn").addEventListener("click", async () => {
           svg: compositeSvg(),
           font: S.text.font,
           label: (S.text.value || "").trim(),
+          /* Every label, so the server can bake each face the SVG names — the
+             markup alone cannot say which font id a family came from. */
+          labels: visibleLabels().map((t) => ({ font: t.font, value: t.value })),
         }),
       });
       if (res.ok) svg = await res.text();
@@ -1620,7 +1724,11 @@ function designPayload() {
   return {
     bg: S.bg, fg: S.fg, autoFg: S.autoFg, gray: S.gray,
     shape: S.shape, transparent: S.transparent,
+    /* `text` is the active label, kept for payload readers that predate multiple
+       labels; `labels` is the real list. */
     text: { ...S.text },
+    labels: (S.labels || []).map((t) => ({ ...t })),
+    activeLabel: S.activeLabel,
     active: S.active,
     layers: S.layers.map((l) => ({
       icon: snapIcon(l.icon), size: l.size, x: l.x, y: l.y, rot: l.rot,
@@ -1658,16 +1766,26 @@ function applyDesign(raw) {
   S.gray = !!raw.gray;
   S.shape = ["squircle", "circle", "square", "full"].includes(raw.shape) ? raw.shape : S.shape;
   S.transparent = !!raw.transparent;
-  if (raw.text && typeof raw.text === "object") {
-    const t = raw.text;
-    S.text.value = typeof t.value === "string" ? t.value : "";
-    S.text.size = Number(t.size) > 0 ? clamp(Number(t.size), 0.04, 1) : TEXT_DEFAULT.size;
-    S.text.x = Number.isFinite(Number(t.x)) ? clamp(Number(t.x), 0, 1) : TEXT_DEFAULT.x;
-    S.text.y = Number.isFinite(Number(t.y)) ? clamp(Number(t.y), 0, 1) : TEXT_DEFAULT.y;
-    S.text.rot = Number.isFinite(Number(t.rot)) ? clamp(Number(t.rot), 0, 359) : TEXT_DEFAULT.rot;
-    S.text.font = FONT_STACKS[t.font] ? t.font : TEXT_DEFAULT.font;
-    S.text.bold = t.bold !== false;
-    S.text.colour = hexToRgb(t.colour) ? rgbToHex(...hexToRgb(t.colour)) : S.text.colour;
+  const oneLabel = (t) => ({
+    value: typeof t.value === "string" ? t.value : "",
+    size: Number(t.size) > 0 ? clamp(Number(t.size), 0.04, 1) : TEXT_DEFAULT.size,
+    x: Number.isFinite(Number(t.x)) ? clamp(Number(t.x), 0, 1) : TEXT_DEFAULT.x,
+    y: Number.isFinite(Number(t.y)) ? clamp(Number(t.y), 0, 1) : TEXT_DEFAULT.y,
+    rot: Number.isFinite(Number(t.rot)) ? clamp(Number(t.rot), 0, 359) : TEXT_DEFAULT.rot,
+    font: FONT_STACKS[t.font] ? t.font : TEXT_DEFAULT.font,
+    bold: t.bold !== false,
+    colour: hexToRgb(t.colour) ? rgbToHex(...hexToRgb(t.colour)) : TEXT_DEFAULT.colour,
+  });
+  if (Array.isArray(raw.labels) && raw.labels.length) {
+    S.labels = raw.labels.slice(0, 12)
+      .filter((t) => t && typeof t === "object")
+      .map(oneLabel);
+    if (!S.labels.length) S.labels = [{ ...TEXT_DEFAULT }];
+    S.activeLabel = clamp(Math.round(Number(raw.activeLabel) || 0), 0, S.labels.length - 1);
+  } else if (raw.text && typeof raw.text === "object") {
+    /* Pre-multi-label payload: one label, which is what it looked like. */
+    S.labels = [oneLabel(raw.text)];
+    S.activeLabel = 0;
   }
 
   if (Array.isArray(raw.layers) && raw.layers.length) {
@@ -1739,7 +1857,8 @@ const hasGlyph = () => S.layers.some((l) => l && l.icon);
 function autoDesignName() {
   const p = primaryIcon();
   const base = p ? p.name : "icon";
-  const label = (S.text.value || "").trim();
+  const first = (S.labels || []).find((t) => String(t.value || "").trim());
+  const label = first ? String(first.value).trim() : "";
   return label ? `${base} ${label}` : base;
 }
 
@@ -1898,7 +2017,8 @@ async function loadDesign(id) {
   designSuppress = true;
   S.layers = [makeLayer(null)];
   S.active = 0;
-  S.text = { ...TEXT_DEFAULT };
+  S.labels = [{ ...TEXT_DEFAULT }];
+  S.activeLabel = 0;
   applyDesign(rec.state || {});
   S.designId = rec.id;
   S.designName = rec.name || "";
@@ -1917,7 +2037,8 @@ async function newDesign() {
   designSuppress = true;
   S.layers = [makeLayer(null)];
   S.active = 0;
-  S.text = { ...TEXT_DEFAULT, colour: S.fg };
+  S.labels = [{ ...TEXT_DEFAULT, colour: S.fg }];
+  S.activeLabel = 0;
   S.designId = null;
   S.designName = "";
   S.lastSrc = null;

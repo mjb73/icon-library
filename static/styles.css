@@ -178,6 +178,24 @@ body {
 .chip-btn:disabled { opacity: 0.35; cursor: not-allowed; }
 .slider:disabled { opacity: 0.35; cursor: not-allowed; }
 
+/* --- label strip: one chip per label, shown in that label's own colour/face --- */
+.label-strip { display: flex; gap: 0.3rem; overflow-x: auto; padding-bottom: 2px; scrollbar-width: none; }
+.label-strip::-webkit-scrollbar { display: none; }
+.label-chip {
+  flex: 0 0 auto; min-width: 42px; height: 34px; padding: 0 0.45rem;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 0.8rem; line-height: 1; white-space: nowrap;
+  border-radius: 9px; background: var(--bg-input); color: var(--text);
+  border: 1px solid var(--border);
+}
+.label-chip.empty { color: var(--muted); }
+.label-chip .layer-plus { font-size: 1.1rem; }
+.label-chip:hover { border-color: var(--accent); }
+.label-chip.active {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--glow-1) inset, 0 0 0 1px var(--accent);
+}
+
 /* --- search --- */
 .searchbar { display: flex; gap: 0.5rem; }
 .searchbar input {
@@ -534,6 +552,8 @@ input[type="color"]::-webkit-color-swatch { border: none; border-radius: 5px; }
   .composer { max-height: none; }
   .tabpanel, .tabpanel.active { overflow: visible; }
   .layer-chip { width: 46px; height: 46px; }
+  /* Label chips are text, so they need width as well as height to stay a tap target. */
+  .label-chip { height: 46px; min-width: 56px; font-size: 0.9rem; }
   #stage { width: min(56vw, 220px); height: min(56vw, 220px); }
   .colour-panel { grid-template-columns: 148px minmax(0, 1fr); }
   #wheel { width: 148px; height: 148px; }

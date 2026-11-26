@@ -86,40 +86,67 @@ def _font_subset_b64(rel: str, text: str) -> str:
     return data
 
 
-def embed_label_font(svg: str, font_id: str | None = None, text: str | None = None,
-                     family: str | None = None) -> str:
-    """Bake the label face into the SVG so the text survives off this machine.
+def embed_label_fonts(svg: str, groups) -> str:
+    """Bake every label face into the SVG so the text survives off this machine.
 
     Without it the SVG names a bundled family the viewer probably lacks, and
     the label silently falls back to its system serif/sans — most visible on
     Windows, where none of the 40 faces are installed.
+
+    `groups` is an iterable of (font_id, text, family) — one per label. Labels
+    that share a family share one @font-face, subset to the union of the
+    characters they use, so a two-label icon carries two subsets, not two
+    conflicting rules for the same family.
     """
     if not svg or "<text" not in svg.lower():
         return svg
-    entry = FONT_BY_ID.get(font_id or "") or FONT_BY_FAMILY.get(family or "")
-    sample = (text or "").strip()
-    if not entry or not sample:
-        return svg
-    faces = []
-    pairs = [(400, entry.get("regular"))] if entry.get("variable") else [
-        (400, entry.get("regular")), (700, entry.get("bold"))
-    ]
-    for weight, rel in pairs:
-        if not rel or not (FONT_DIR / rel).exists():
+    per_family: dict[str, dict] = {}
+    for font_id, text, family in groups:
+        entry = FONT_BY_ID.get(font_id or "") or FONT_BY_FAMILY.get(family or "")
+        sample = (text or "").strip()
+        if not entry or not sample:
             continue
-        fmt = "opentype" if rel.lower().endswith((".otf", ".otc")) else "truetype"
-        css_weight = "400 900" if entry.get("variable") else str(weight)
-        faces.append(
-            f'@font-face{{font-family:"{entry["family"]}";font-style:normal;'
-            f'font-weight:{css_weight};src:url(data:font/{fmt};base64,'
-            f'{_font_subset_b64(rel, sample)}) format("{fmt}")}}'
-        )
+        slot = per_family.setdefault(entry["family"], {"entry": entry, "chars": ""})
+        slot["chars"] += sample
+    faces = []
+    for slot in per_family.values():
+        entry = slot["entry"]
+        sample = "".join(dict.fromkeys(slot["chars"]))
+        pairs = [(400, entry.get("regular"))] if entry.get("variable") else [
+            (400, entry.get("regular")), (700, entry.get("bold"))
+        ]
+        for weight, rel in pairs:
+            if not rel or not (FONT_DIR / rel).exists():
+                continue
+            fmt = "opentype" if rel.lower().endswith((".otf", ".otc")) else "truetype"
+            css_weight = "400 900" if entry.get("variable") else str(weight)
+            faces.append(
+                f'@font-face{{font-family:"{entry["family"]}";font-style:normal;'
+                f'font-weight:{css_weight};src:url(data:font/{fmt};base64,'
+                f'{_font_subset_b64(rel, sample)}) format("{fmt}")}}'
+            )
     if not faces:
         return svg
     m = re.search(r"<svg\b[^>]*>", svg, re.I)
     if not m:
         return svg
     return svg[:m.end()] + "<style>" + "".join(faces) + "</style>" + svg[m.end():]
+
+
+def embed_label_font(svg: str, font_id: str | None = None, text: str | None = None,
+                     family: str | None = None) -> str:
+    """One label — the wrapper every single-label caller keeps using."""
+    return embed_label_fonts(svg, [(font_id, text, family)])
+
+
+def svg_label_texts(svg: str) -> list[tuple[str | None, str]]:
+    """Family and text of **every** <text> element, front-most last as drawn."""
+    out = []
+    for m in re.finditer(r'<text\b[^>]*font-family="([^"]+)"[^>]*>(.*?)</text>', svg, re.I | re.S):
+        family = html_lib.unescape(m.group(1)).split(",")[0].strip().strip("'\"")
+        text = html_lib.unescape(re.sub(r"<[^>]+>", "", m.group(2)))
+        out.append((family, text))
+    return out
 
 
 def svg_label_font(svg: str) -> tuple[str | None, str | None]:
@@ -131,6 +158,24 @@ def svg_label_font(svg: str) -> tuple[str | None, str | None]:
     family = html_lib.unescape(m.group(1)).split(",")[0].strip().strip("'\"")
     text = html_lib.unescape(re.sub(r"<[^>]+>", "", m.group(2)))
     return family, text
+
+
+def label_groups(payload: dict, svg: str) -> list[tuple[str | None, str | None, str | None]]:
+    """(font_id, text, family) per label, from the payload when it says which
+    font each label uses, otherwise parsed out of the SVG's own <text> nodes."""
+    labels = payload.get("labels")
+    groups: list[tuple[str | None, str | None, str | None]] = [(l.get("font"), l.get("value"), None)
+              for l in labels if isinstance(l, dict)] if isinstance(labels, list) else []
+    if not groups:
+        lab = payload.get("label")
+        if isinstance(lab, dict):
+            groups = [(lab.get("font"), lab.get("value"), None)]
+        elif isinstance(lab, str) and lab.strip():
+            font = payload.get("font") if isinstance(payload.get("font"), str) else None
+            groups = [(font, lab, None)]
+    if not groups:
+        groups = [(None, text, family) for family, text in svg_label_texts(svg)]
+    return groups
 
 
 app = FastAPI(title="Icon Library")
@@ -406,9 +451,7 @@ async def export_svg(payload: dict):
         raise HTTPException(400, "svg required")
     if len(svg.encode("utf-8")) > 200_000:
         raise HTTPException(413, "icon too large")
-    label = payload.get("label") if isinstance(payload.get("label"), str) else ""
-    family, text = svg_label_font(svg)
-    svg = embed_label_font(svg, payload.get("font"), label or text, family=family)
+    svg = embed_label_fonts(svg, label_groups(payload, svg))
     return Response(svg, media_type="image/svg+xml",
                     headers={"Cache-Control": "no-store"})
 
@@ -427,9 +470,18 @@ async def export(payload: dict):
 
     name = slug(payload.get("name") or payload.get("icon") or "icon")
     svg = payload.get("svg") or ""
+    payload_labels = [
+        {"value": l.get("value", ""), "font": l.get("font", ""), "bold": bool(l.get("bold")),
+         "colour": l.get("colour", ""), "size": l.get("size"), "x": l.get("x"), "y": l.get("y"),
+         "rot": l.get("rot") or 0}
+        for l in (payload.get("labels") or []) if isinstance(l, dict)
+    ]
+    if not payload_labels:
+        one = payload.get("label")
+        if isinstance(one, dict):
+            payload_labels = [one]
     if svg:
-        label = payload.get("label") or {}
-        svg = embed_label_font(svg, label.get("font"), label.get("value"))
+        svg = embed_label_fonts(svg, label_groups(payload, svg))
     meta = {
         "icon": payload.get("icon", ""),
         "collection": payload.get("collection", ""),
@@ -444,6 +496,7 @@ async def export(payload: dict):
         "inset": payload.get("inset"),
         "rotation": payload.get("rotation", 0),
         "label": payload.get("label") or None,
+        "labels": payload_labels,
         "layers": [{
             "icon": l.get("icon", ""),
             "collection": l.get("collection", ""),
@@ -504,14 +557,18 @@ async def export(payload: dict):
                 if per_layer_ink and l.get("ink"):
                     line += f" · {l['ink']}"
                 lic_lines.append(line)
-        if meta["label"]:
-            lab = meta["label"]
-            lic_lines.append(
-                f"Label:      {lab.get('value', '')!r} · {lab.get('font', '')}"
-                f"{' bold' if lab.get('bold') else ''} · {lab.get('colour', '')}"
-                f" · size {lab.get('size')} · at {lab.get('x')},{lab.get('y')}"
-                f" · {lab.get('rot') or 0} deg"
-            )
+        def label_line(lab: dict) -> str:
+            return (f"{lab.get('value', '')!r} · {lab.get('font', '')}"
+                    f"{' bold' if lab.get('bold') else ''} · {lab.get('colour', '')}"
+                    f" · size {lab.get('size')} · at {lab.get('x')},{lab.get('y')}"
+                    f" · {lab.get('rot') or 0} deg")
+
+        if len(meta["labels"]) == 1:
+            lic_lines.append("Label:      " + label_line(meta["labels"][0]))
+        elif meta["labels"]:
+            lic_lines.append("Labels (back to front):")
+            for i, lab in enumerate(meta["labels"], 1):
+                lic_lines.append(f"  {i}. " + label_line(lab))
         z.writestr("LICENSE.txt", "\n".join(lic_lines))
     buf.seek(0)
     headers = {"Content-Disposition": f'attachment; filename="{name}-iconset.zip"'}
@@ -686,8 +743,8 @@ async def launcher_icon(payload: dict):
         raise HTTPException(400, "svg required")
     if len(svg.encode("utf-8")) > 200_000:
         raise HTTPException(413, "icon too large")
-    family, label_text = svg_label_font(svg)
-    svg = embed_label_font(svg, family=family, text=label_text)
+    # every label's face, not just the first text node
+    svg = embed_label_fonts(svg, label_groups({}, svg))
 
     req = urllib.request.Request(
         f"{launcher}/api/icon/{slug}",
