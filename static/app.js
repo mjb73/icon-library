@@ -984,6 +984,15 @@ function paintLayers() {
     : "Clear the icon from the stage";
 }
 
+/* Export and copy are live as soon as there is anything to draw — a glyph OR a
+   label. This used to live inside syncLayerUI only, so typing a label left the
+   buttons dead until some layer control was touched. */
+function syncExportButtons() {
+  const any = hasInk();
+  ["exportBtn", "pngBtn", "svgBtn", "svgCopyBtn"].forEach((id) => { const b = $(id); if (b) b.disabled = !any; });
+  if (LAUNCH_TARGET) $("lbSave").disabled = !any;
+}
+
 function syncLayerUI() {
   const l = activeLayer();
   const has = !!(l && l.icon);
@@ -1001,9 +1010,7 @@ function syncLayerUI() {
   // Geometry only means something once the layer has a glyph.
   ["inset", "iconX", "iconY", "rotation"].forEach((id) => { $(id).disabled = !has; });
 
-  const any = hasInk();   // a text-only icon exports and saves like any other
-  ["exportBtn", "pngBtn", "svgBtn", "svgCopyBtn"].forEach((id) => { $(id).disabled = !any; });
-  if (LAUNCH_TARGET) $("lbSave").disabled = !any;
+  syncExportButtons();
 
   $("selInfo").querySelector(".sel-name").textContent =
     has ? `${l.icon.prefix}:${l.icon.name}` : "No icon selected";
@@ -1503,6 +1510,7 @@ function paintLabels() {
     btn.textContent = n > 1 ? "Remove" : "Clear";
     btn.title = n > 1 ? "Remove this label" : "Clear this label's text";
   }
+  syncExportButtons();   // a typed label alone is enough to export
 }
 
 function addLabel() {
@@ -1531,6 +1539,9 @@ function removeLabel() {
   render();
   save();
 }
+
+/* Every label mutation funnels through syncLabelUI, which ends in paintLabels —
+   that is where the export buttons learn that text alone is enough to export. */
 
 function syncLabelUI() {
   $("labelText").value = S.text.value;

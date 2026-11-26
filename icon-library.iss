@@ -4,7 +4,7 @@
 ; Produces Output\IconLibrary-Setup-<version>.exe
 
 #define AppName "Icon Library"
-#define AppVersion "1.4.3"
+#define AppVersion "1.4.4"
 #define AppPublisher "Michael Bayes"
 #define AppExeName "Icon Library.exe"
 #define SourceDir "build\win\Icon Library"
