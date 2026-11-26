@@ -1494,22 +1494,42 @@ function paintLabels() {
   const n = list.length;
   const filled = list.filter((t) => String(t.value || "").trim()).length;
   if ($("labelNote")) $("labelNote").textContent = filled + " of " + n + (n === 1 ? " label" : " labels");
-  if ($("labelRemove")) $("labelRemove").disabled = n <= 1;
+  /* Same rule as the icon strip: one label has no row to drop, so the button
+     clears its text, and it is only dead when that text is already empty. */
+  const only = list[0];
+  const btn = $("labelRemove");
+  if (btn) {
+    btn.disabled = n <= 1 && !String((only && only.value) || "").trim();
+    btn.textContent = n > 1 ? "Remove" : "Clear";
+    btn.title = n > 1 ? "Remove this label" : "Clear this label's text";
+  }
 }
 
 function addLabel() {
   S.labels.push({ ...TEXT_DEFAULT, colour: S.text.colour });
   S.activeLabel = S.labels.length - 1;
   syncLabelUI();
+  save();
   const box = $("labelText");
   if (box) box.focus();
 }
 
+/* Drop the active label. With several labels that removes the entry; with one
+   there is nothing to drop, so it clears its text (the text box is the on/off).
+   Either way the stage is redrawn and the change is saved — removing a label
+   used to leave its text painted on the preview and out of the saved design. */
 function removeLabel() {
-  if ((S.labels || []).length <= 1) return;
-  S.labels.splice(S.activeLabel, 1);
-  S.activeLabel = Math.max(0, Math.min(S.activeLabel, S.labels.length - 1));
+  if ((S.labels || []).length > 1) {
+    S.labels.splice(S.activeLabel, 1);
+    S.activeLabel = Math.max(0, Math.min(S.activeLabel, S.labels.length - 1));
+  } else {
+    const t = S.labels[0];
+    if (!t || !String(t.value || "").trim()) return;
+    t.value = "";
+  }
   syncLabelUI();
+  render();
+  save();
 }
 
 function syncLabelUI() {
