@@ -1291,23 +1291,19 @@ async function copyIcon(pngBlob, svgText) {
   const canWrite = window.isSecureContext && navigator.clipboard
     && navigator.clipboard.write && window.ClipboardItem;
   if (canWrite) {
-    // A third flavour for rich-text targets (Word, Docs, Obsidian, chat): they
-    // prefer text/html over text/plain, so without it they paste the SVG source
-    // — the exact complaint this fixes. The <img> is the same PNG as data URI.
+    /* image/png first, text/html as the rich-text carrier. No text/plain SVG:
+       apps that prefer plain text (DeckCraft's Ctrl+V, for one) then paste the
+       markup — the "it copies the parameters" bug — so the markup stays behind
+       the SVG download button and the clipboard carries only the picture. */
     const html = await new Promise((res) => {
       const fr = new FileReader();
       fr.onload = () => res(`<img src="${fr.result}" width="${COPY_PX}" height="${COPY_PX}" alt="icon">`);
       fr.onerror = () => res("");
       fr.readAsDataURL(pngBlob);
     });
-    const tries = [{ "image/png": pngBlob }];
-    if (svgText) {
-      tries.unshift(html
-        ? { "image/png": pngBlob, "text/html": new Blob([html], { type: "text/html" }),
-            "text/plain": new Blob([svgText], { type: "text/plain" }) }
-        : { "image/png": pngBlob, "text/plain": new Blob([svgText], { type: "text/plain" }) });
-    }
-    for (const flavours of tries) {
+    const full = { "image/png": pngBlob };
+    if (html) full["text/html"] = new Blob([html], { type: "text/html" });
+    for (const flavours of [full, { "image/png": pngBlob }]) {
       try { await navigator.clipboard.write([new ClipboardItem(flavours)]); return "image"; }
       catch (e) { console.warn("clipboard image write failed", e); }
     }
@@ -1343,7 +1339,7 @@ $("svgCopyBtn").addEventListener("click", async () => {
     const how = await copyIcon(png, svg);
     btn.textContent = "Copied";
     if (how === "image") {
-      note.textContent = `icon copied · ${COPY_PX} px png${svg ? " + svg text" : ""}`;
+      note.textContent = `icon copied · ${COPY_PX} px png`;
     } else {
       note.textContent = insecureHint();
       setTimeout(() => { note.textContent = idle; }, 6000);
