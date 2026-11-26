@@ -157,6 +157,17 @@ The label subset keeps the SVG portable: the text survives on a machine that has
 none of the 40 faces, which matters most on Windows. A two-character label adds
 roughly 5–15 KB instead of the 200 KB–2.6 MB a whole face would cost.
 
+## Copy to clipboard
+
+The `Copy` button puts the finished icon on the clipboard as a 256 × 256 PNG
+(plus `text/html` and the SVG markup as `text/plain`), so pasting into a document,
+a chat or an image editor gives the picture rather than the SVG source.
+
+A browser only allows an image on the clipboard from a **secure context**:
+`http://127.0.0.1:7876` or an `https://` URL. Over a plain-`http` LAN or tailnet
+address no browser API can write a bitmap, so the button copies the SVG markup
+instead and says why in the export note.
+
 ## Sizing
 
 200 × 200 is not a platform size — it is a comfortable preview tile, and the stage shows

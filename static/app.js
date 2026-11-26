@@ -1235,16 +1235,24 @@ $("svgBtn").addEventListener("click", () => {
    The complaint this fixes: the button used to put only SVG *source* on the
    clipboard, so pasting into a doc, a chat or an image editor gave you the
    parameters instead of the picture. Now one clipboard entry carries two
-   flavours: image/png (1024 px, straight off the stage canvas — what every
-   paste target honours) and text/plain (the server-baked SVG markup, for an
-   editor that wants the vector source).
+   flavours: image/png (256 px, downscaled from the 1024 stage canvas — what
+   every paste target honours) and text/plain (the server-baked SVG markup, for
+   an editor that wants the vector source).
    image/png is a sanitized flavour Chrome on Linux accepts; image/svg+xml is
    rejected there. execCommand remains the last-resort fallback because the
    tailnet URL (http://100.x…) is not a secure context and has no
    navigator.clipboard. */
-function stagePng() {
-  return new Promise((res, rej) => stage.toBlob(
-    (b) => (b ? res(b) : rej(new Error("could not rasterise the icon"))), "image/png"));
+const COPY_PX = 256;
+
+function stagePng(size = COPY_PX) {
+  return new Promise((res, rej) => {
+    const off = document.createElement("canvas");
+    off.width = off.height = size;
+    const octx = off.getContext("2d");
+    octx.imageSmoothingQuality = "high";
+    octx.drawImage(stage, 0, 0, size, size); // 1024 stage -> COPY_PX
+    off.toBlob((b) => (b ? res(b) : rej(new Error("could not rasterise the icon"))), "image/png");
+  });
 }
 
 async function copyText(text) {
@@ -1288,7 +1296,7 @@ async function copyIcon(pngBlob, svgText) {
     // — the exact complaint this fixes. The <img> is the same PNG as data URI.
     const html = await new Promise((res) => {
       const fr = new FileReader();
-      fr.onload = () => res(`<img src="${fr.result}" width="1024" height="1024" alt="icon">`);
+      fr.onload = () => res(`<img src="${fr.result}" width="${COPY_PX}" height="${COPY_PX}" alt="icon">`);
       fr.onerror = () => res("");
       fr.readAsDataURL(pngBlob);
     });
@@ -1335,7 +1343,7 @@ $("svgCopyBtn").addEventListener("click", async () => {
     const how = await copyIcon(png, svg);
     btn.textContent = "Copied";
     if (how === "image") {
-      note.textContent = `icon copied · 1024 px png${svg ? " + svg text" : ""}`;
+      note.textContent = `icon copied · ${COPY_PX} px png${svg ? " + svg text" : ""}`;
     } else {
       note.textContent = insecureHint();
       setTimeout(() => { note.textContent = idle; }, 6000);
