@@ -485,10 +485,14 @@ async function render() {
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.clearRect(0, 0, 1024, 1024);
   if (!S.transparent) drawBackground(ctx, S.shape, 1024, S.bg);
-  if (!S.layers.some((l) => l.icon)) {
+  /* A label is a drawing in its own right: a number on a coloured square is a
+     perfectly good icon, so text no longer needs a glyph underneath it. Only an
+     empty stage (no glyph AND no label) stops here. */
+  const anyGlyph = S.layers.some((l) => l.icon);
+  if (!anyGlyph) {
     S.layers.forEach((l) => { l.src = null; });
     S.lastSrc = null;
-    return;
+    if (!visibleLabels().length) return;
   }
 
   for (const layer of S.layers) {
@@ -531,7 +535,8 @@ async function render() {
    export cannot drift apart. */
 function compositeSvg() {
   const layers = S.layers.filter((l) => l.icon && l.src);
-  if (!layers.length) return "";
+  const labels = labelSvg();
+  if (!layers.length && !labels) return "";
   const gs = S.gray
     ? `<defs><filter id="gs" x="-20%" y="-20%" width="140%" height="140%">`
       + `<feColorMatrix type="saturate" values="0"/></filter></defs>`
@@ -552,7 +557,7 @@ function compositeSvg() {
 <svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
 ${gs}${S.transparent ? "" : bgSvg(S.shape, 1024, S.bg)}
 ${glyphs}
-${labelSvg()}
+${labels}
 </svg>`;
 }
 
@@ -989,7 +994,7 @@ function syncLayerUI() {
   // Geometry only means something once the layer has a glyph.
   ["inset", "iconX", "iconY", "rotation"].forEach((id) => { $(id).disabled = !has; });
 
-  const any = S.layers.some((x) => x.icon);
+  const any = hasInk();   // a text-only icon exports and saves like any other
   ["exportBtn", "pngBtn", "svgBtn", "svgCopyBtn"].forEach((id) => { $(id).disabled = !any; });
   if (LAUNCH_TARGET) $("lbSave").disabled = !any;
 
@@ -1104,9 +1109,18 @@ function primaryIcon() {
   return first ? first.icon : null;
 }
 
+/* Name of the thing being exported: the glyph when there is one, otherwise the
+   first label's text — a text-only icon still needs a file name. */
+function exportName() {
+  const p = primaryIcon();
+  if (p && p.name) return p.name;
+  const lab = visibleLabels()[0];
+  return (lab && String(lab.value).trim()) || "icon";
+}
+
 async function exportSet() {
   const primary = primaryIcon();
-  if (!primary) return;
+  if (!primary && !hasInk()) return;
   const btn = $("exportBtn");
   btn.disabled = true;
   btn.textContent = "Building…";
@@ -1114,14 +1128,15 @@ async function exportSet() {
     const payload = {
       png: stage.toDataURL("image/png"),
       svg: compositeSvg(),
-      name: primary.name,
-      icon: primary.id,
-      collection: primary.collection,
-      license: primary.spdx,
-      license_url: primary.license_url || "",
-      author: primary.author || "",
+      name: exportName(),
+      icon: primary ? primary.id : "",
+      collection: primary ? primary.collection : "",
+      license: primary ? primary.spdx : "",
+      license_url: (primary && primary.license_url) || "",
+      author: (primary && primary.author) || "",
       bg: S.transparent ? null : S.bg, fg: S.fg, grayscale: S.gray, shape: S.shape,
-      transparent: S.transparent, inset: S.inset, rotation: S.rotation, remote: !!primary.remote,
+      transparent: S.transparent, inset: S.inset, rotation: S.rotation,
+      remote: !!(primary && primary.remote),
       label: (S.text.value || "").trim() ? { ...S.text } : null,
       labels: visibleLabels().map((t) => ({ ...t })),
       layers: S.layers.filter((l) => l.icon).map((l) => ({
@@ -1137,7 +1152,7 @@ async function exportSet() {
       body: JSON.stringify(payload),
     });
     if (!res.ok) throw new Error(await res.text());
-    download(await res.blob(), `${slug(primary.name)}-iconset.zip`);
+    download(await res.blob(), `${slug(exportName())}-iconset.zip`);
   } catch (e) {
     console.error(e);
     $("exportNote").textContent = "export failed: " + e.message;
@@ -1564,17 +1579,15 @@ $("designName").addEventListener("change", () => { scheduleDesignSave(); });
 $("designSave").addEventListener("click", () => {
   clearTimeout(designTimer);
   designTimer = null;
-  if (!hasGlyph()) { setDesignNote("pick a glyph first"); return; }
+  if (!hasInk()) { setDesignNote("pick a glyph or type a label first"); return; }
   saveDesign();
 });
 $("designNew").addEventListener("click", newDesign);
 $("pngBtn").addEventListener("click", () => {
-  const p = primaryIcon();
-  stage.toBlob((b) => download(b, `${slug(p && p.name)}-1024.png`), "image/png");
+  stage.toBlob((b) => download(b, `${slug(exportName())}-1024.png`), "image/png");
 });
 $("svgBtn").addEventListener("click", () => {
-  const p = primaryIcon();
-  download(new Blob([compositeSvg()], { type: "image/svg+xml" }), `${slug(p && p.name)}.svg`);
+  download(new Blob([compositeSvg()], { type: "image/svg+xml" }), `${slug(exportName())}.svg`);
 });
 
 /* Copy the finished icon to the clipboard as a real image, not as markup.
@@ -1661,7 +1674,7 @@ async function copyIcon(pngBlob, svgText) {
 
 $("svgCopyBtn").addEventListener("click", async () => {
   const p = primaryIcon();
-  if (!p) return;
+  if (!p && !hasInk()) return;
   const btn = $("svgCopyBtn");
   const note = $("exportNote");
   const idle = note.textContent;
@@ -1853,6 +1866,8 @@ let designSuppress = false;   // true while a design is being applied, so loadin
                               // it cannot immediately re-save it
 
 const hasGlyph = () => S.layers.some((l) => l && l.icon);
+/* Anything worth filing or exporting: a glyph, or just text on the frame. */
+const hasInk = () => hasGlyph() || visibleLabels().length > 0;
 
 function autoDesignName() {
   const p = primaryIcon();
@@ -1878,13 +1893,13 @@ function setDesignNote(text) {
 }
 
 function scheduleDesignSave() {
-  if (designSuppress || !hasGlyph()) return;
+  if (designSuppress || !hasInk()) return;
   clearTimeout(designTimer);
   designTimer = setTimeout(() => { designTimer = null; saveDesign(); }, 1100);
 }
 
 async function saveDesign() {
-  if (!hasGlyph()) return null;
+  if (!hasInk()) return null;
   if (designBusy) { scheduleDesignSave(); return null; }
   designBusy = true;
   try {
@@ -1971,7 +1986,7 @@ function paintDesigns() {
     meta.className = "design-meta";
     const glyphs = (d.glyphs || []).map((g) => String(g).split(":")[1] || g);
     meta.textContent = (glyphs.length > 1 ? glyphs.length + " glyphs · " : "")
-      + (glyphs[0] || "") + " · " + timeAgo(d.updated);
+      + (glyphs[0] || "text only") + " · " + timeAgo(d.updated);
     open.append(thumb, name, meta);
     open.addEventListener("click", () => loadDesign(d.id));
 
@@ -2004,7 +2019,7 @@ async function loadDesign(id) {
   clearTimeout(designTimer);
   designTimer = null;
   // File whatever is on the stage before replacing it, so nothing is lost.
-  if (hasGlyph()) { try { await saveDesign(); } catch (e) { /* offline */ } }
+  if (hasInk()) { try { await saveDesign(); } catch (e) { /* offline */ } }
   let rec = null;
   try {
     const res = await fetch(`${DESIGN_API}/${id}`);
@@ -2033,7 +2048,7 @@ async function loadDesign(id) {
 async function newDesign() {
   clearTimeout(designTimer);
   designTimer = null;
-  if (hasGlyph()) await saveDesign();
+  if (hasInk()) await saveDesign();
   designSuppress = true;
   S.layers = [makeLayer(null)];
   S.active = 0;

@@ -662,8 +662,11 @@ async def save_design(payload: dict):
     if not isinstance(state, dict):
         raise HTTPException(400, "state required")
     glyphs = [g for g in (payload.get("glyphs") or []) if isinstance(g, str)][:12]
-    if not glyphs:
-        raise HTTPException(400, "a design needs at least one glyph")
+    # A text-only icon (a number on a coloured square) is a design too.
+    labels = [t for t in (state.get("labels") or [])
+              if isinstance(t, dict) and str(t.get("value") or "").strip()]
+    if not glyphs and not labels:
+        raise HTTPException(400, "a design needs a glyph or a label")
     encoded = json.dumps(state, ensure_ascii=False)
     if len(encoded.encode("utf-8")) > MAX_DESIGN_BYTES:
         raise HTTPException(413, "design too large")
